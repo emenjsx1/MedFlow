@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { format, addDays, subDays } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { format, addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatsCard from '@/components/dashboard/StatsCard';
@@ -25,105 +25,120 @@ import {
   ChevronRight,
   Search,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-// Mock data for the MVP
-const mockAppointments: Appointment[] = [
-  {
-    id: '1',
-    patient_name: 'Maria Silva',
-    patient_phone: '(11) 99999-1234',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T09:00:00'),
-    status: 'confirmed',
-    risk_level: 'low',
-    professional_name: 'Dr. Carlos Oliveira',
-    last_contact_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '2',
-    patient_name: 'João Santos',
-    patient_phone: '(11) 98888-5678',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T10:30:00'),
-    status: 'pending',
-    risk_level: 'medium',
-    professional_name: 'Dr. Carlos Oliveira',
-    last_contact_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: '3',
-    patient_name: 'Ana Costa',
-    patient_phone: '(11) 97777-9012',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T11:00:00'),
-    status: 'pending',
-    risk_level: 'high',
-    professional_name: 'Dra. Paula Mendes',
-  },
-  {
-    id: '4',
-    patient_name: 'Pedro Ferreira',
-    patient_phone: '(11) 96666-3456',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T14:00:00'),
-    status: 'cancelled',
-    risk_level: 'low',
-    professional_name: 'Dr. Carlos Oliveira',
-    last_contact_at: new Date(Date.now() - 1800000).toISOString(),
-  },
-  {
-    id: '5',
-    patient_name: 'Carla Rocha',
-    patient_phone: '(11) 95555-7890',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T14:30:00'),
-    status: 'in_replacement',
-    risk_level: 'low',
-    professional_name: 'Dr. Carlos Oliveira',
-  },
-  {
-    id: '6',
-    patient_name: 'Roberto Lima',
-    patient_phone: '(11) 94444-2345',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T15:30:00'),
-    status: 'confirmed',
-    risk_level: 'low',
-    professional_name: 'Dra. Paula Mendes',
-    last_contact_at: new Date(Date.now() - 5400000).toISOString(),
-  },
-  {
-    id: '7',
-    patient_name: 'Fernanda Souza',
-    patient_phone: '(11) 93333-6789',
-    scheduled_at: new Date().toISOString().replace(/T.*/, 'T16:00:00'),
-    status: 'pending',
-    risk_level: 'low',
-    professional_name: 'Dr. Carlos Oliveira',
-  },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
+  const { tenantId } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (tenantId) {
+      loadAppointments();
+    }
+  }, [tenantId, selectedDate]);
+
+  const loadAppointments = async () => {
+    try {
+      const dayStart = startOfDay(selectedDate).toISOString();
+      const dayEnd = endOfDay(selectedDate).toISOString();
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .gte('scheduled_at', dayStart)
+        .lte('scheduled_at', dayEnd)
+        .order('scheduled_at', { ascending: true });
+
+      if (error) throw error;
+      setAppointments(data || []);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar os agendamentos.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadAppointments();
+  };
 
   // Calculate stats
   const stats = {
-    total: mockAppointments.length,
-    confirmed: mockAppointments.filter((a) => a.status === 'confirmed').length,
-    pending: mockAppointments.filter((a) => a.status === 'pending').length,
-    cancelled: mockAppointments.filter((a) => a.status === 'cancelled' || a.status === 'no_show').length,
-    atRisk: mockAppointments.filter((a) => a.risk_level === 'high' || a.risk_level === 'medium').length,
-    filled: mockAppointments.filter((a) => a.status === 'filled').length,
+    total: appointments.length,
+    confirmed: appointments.filter((a) => a.status === 'confirmed').length,
+    pending: appointments.filter((a) => a.status === 'pending').length,
+    cancelled: appointments.filter((a) => a.status === 'cancelled' || a.status === 'no_show').length,
+    atRisk: appointments.filter((a) => a.risk_level === 'high' || a.risk_level === 'medium').length,
+    filled: appointments.filter((a) => a.status === 'filled').length,
   };
 
   // Filter appointments
-  const filteredAppointments = mockAppointments.filter((appointment) => {
+  const filteredAppointments = appointments.filter((appointment) => {
     const matchesStatus = statusFilter === 'all' || appointment.status === statusFilter;
     const matchesSearch = appointment.patient_name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
-  const handleAction = (id: string, action: string) => {
+  const handleAction = async (id: string, action: string) => {
     console.log('Action:', action, 'on appointment:', id);
-    // Here you would call the API to perform the action
+    
+    try {
+      type AppointmentStatus = 'confirmed' | 'cancelled' | 'no_show' | 'pending' | 'rescheduled' | 'in_replacement' | 'filled';
+      let newStatus: AppointmentStatus | null = null;
+      
+      switch (action) {
+        case 'confirm':
+          newStatus = 'confirmed';
+          break;
+        case 'cancel':
+          newStatus = 'cancelled';
+          break;
+        case 'no_show':
+          newStatus = 'no_show';
+          break;
+      }
+
+      if (newStatus) {
+        const { error } = await supabase
+          .from('appointments')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', id);
+
+        if (error) throw error;
+        
+        toast({
+          title: 'Sucesso',
+          description: 'Status atualizado com sucesso.',
+        });
+        
+        loadAppointments();
+      }
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o agendamento.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -131,6 +146,16 @@ export default function Dashboard() {
       direction === 'prev' ? subDays(current, 1) : addDays(current, 1)
     );
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -143,9 +168,14 @@ export default function Dashboard() {
               Gerencie as consultas e confirmações de hoje
             </p>
           </div>
-          <Button variant="outline" className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Sincronizar agenda
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+            Atualizar
           </Button>
         </div>
 
@@ -252,7 +282,14 @@ export default function Dashboard() {
         </div>
 
         {/* Table */}
-        <AppointmentTable appointments={filteredAppointments} onAction={handleAction} />
+        {filteredAppointments.length === 0 ? (
+          <div className="bg-card rounded-xl border border-border/50 p-12 shadow-card text-center">
+            <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p className="text-muted-foreground">Nenhum agendamento para esta data</p>
+          </div>
+        ) : (
+          <AppointmentTable appointments={filteredAppointments} onAction={handleAction} />
+        )}
 
         {/* Summary */}
         <div className="bg-card rounded-xl border border-border/50 p-6 shadow-card">
