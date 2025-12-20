@@ -91,8 +91,11 @@ Deno.serve(async (req) => {
       }
 
       if (!instanceExists) {
-        // Create instance in Evolution API
+        // Create instance in Evolution API with webhook configured
         console.log('Creating WhatsApp instance:', instanceName)
+        
+        const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
+        console.log('Webhook URL:', webhookUrl)
         
         const createResponse = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
           method: 'POST',
@@ -104,6 +107,17 @@ Deno.serve(async (req) => {
             instanceName,
             qrcode: true,
             integration: 'WHATSAPP-BAILEYS',
+            webhook: {
+              url: webhookUrl,
+              byEvents: false,
+              base64: false,
+              headers: {},
+              events: [
+                'MESSAGES_UPSERT',
+                'CONNECTION_UPDATE',
+                'QRCODE_UPDATED',
+              ],
+            },
           }),
         })
 
@@ -286,6 +300,9 @@ Deno.serve(async (req) => {
         // Wait a moment for cleanup
         await new Promise(resolve => setTimeout(resolve, 1000))
         
+        const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
+        console.log('Restart webhook URL:', webhookUrl)
+        
         const createResponse = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
           method: 'POST',
           headers: {
@@ -296,6 +313,17 @@ Deno.serve(async (req) => {
             instanceName,
             qrcode: true,
             integration: 'WHATSAPP-BAILEYS',
+            webhook: {
+              url: webhookUrl,
+              byEvents: false,
+              base64: false,
+              headers: {},
+              events: [
+                'MESSAGES_UPSERT',
+                'CONNECTION_UPDATE',
+                'QRCODE_UPDATED',
+              ],
+            },
           }),
         })
 
