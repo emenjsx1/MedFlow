@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,105 +36,173 @@ import {
   Users,
   CheckCircle2,
   Calendar,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 interface WaitlistEntry {
   id: string;
-  patientName: string;
-  patientPhone: string;
-  preferredDate?: string;
-  preferredTime?: string;
+  patient_id: string;
+  preferred_date: string | null;
+  preferred_time_start: string | null;
+  preferred_time_end: string | null;
   priority: number;
-  isActive: boolean;
-  createdAt: string;
+  is_active: boolean;
+  created_at: string;
+  patient?: {
+    name: string;
+    whatsapp: string;
+  } | null;
 }
 
-const mockWaitlist: WaitlistEntry[] = [
-  {
-    id: '1',
-    patientName: 'Luciana Almeida',
-    patientPhone: '(11) 99999-1111',
-    preferredDate: '2024-12-20',
-    preferredTime: '14:00 - 16:00',
-    priority: 1,
-    isActive: true,
-    createdAt: '2024-12-18T10:30:00',
-  },
-  {
-    id: '2',
-    patientName: 'Ricardo Mendes',
-    patientPhone: '(11) 98888-2222',
-    preferredTime: 'Manhã',
-    priority: 2,
-    isActive: true,
-    createdAt: '2024-12-17T15:45:00',
-  },
-  {
-    id: '3',
-    patientName: 'Camila Rodrigues',
-    patientPhone: '(11) 97777-3333',
-    priority: 3,
-    isActive: true,
-    createdAt: '2024-12-16T09:00:00',
-  },
-  {
-    id: '4',
-    patientName: 'Fernando Costa',
-    patientPhone: '(11) 96666-4444',
-    preferredDate: '2024-12-21',
-    priority: 4,
-    isActive: false,
-    createdAt: '2024-12-15T14:20:00',
-  },
-];
-
 export default function Waitlist() {
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(mockWaitlist);
+  const { tenantId } = useAuth();
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientPhone, setNewPatientPhone] = useState('');
   const [newPreferredDate, setNewPreferredDate] = useState('');
-  const [newPreferredTime, setNewPreferredTime] = useState('');
+  const [newPreferredTimeStart, setNewPreferredTimeStart] = useState('');
+  const [newPreferredTimeEnd, setNewPreferredTimeEnd] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const activeCount = waitlist.filter((w) => w.isActive).length;
+  useEffect(() => {
+    if (tenantId) {
+      loadWaitlist();
+    }
+  }, [tenantId]);
 
-  const handleAddToWaitlist = () => {
+  const loadWaitlist = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select(`*, patient:patients(name, whatsapp)`)
+        .eq('tenant_id', tenantId)
+        .order('priority', { ascending: true });
+
+      if (error) throw error;
+      setWaitlist(data || []);
+    } catch (error) {
+      console.error('Error loading waitlist:', error);
+      toast.error('Erro ao carregar fila de espera');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadWaitlist();
+  };
+
+  const activeCount = waitlist.filter((w) => w.is_active).length;
+
+  const handleAddToWaitlist = async () => {
     if (!newPatientName || !newPatientPhone) {
       toast.error('Preencha nome e telefone');
       return;
     }
 
-    const newEntry: WaitlistEntry = {
-      id: String(Date.now()),
-      patientName: newPatientName,
-      patientPhone: newPatientPhone,
-      preferredDate: newPreferredDate || undefined,
-      preferredTime: newPreferredTime || undefined,
-      priority: waitlist.length + 1,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
+    setSaving(true);
+    try {
+      // Create or find patient
+      let patientId: string;
+      
+      const { data: existingPatient } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('whatsapp', newPatientPhone)
+        .maybeSingle();
 
-    setWaitlist([...waitlist, newEntry]);
-    setIsDialogOpen(false);
-    setNewPatientName('');
-    setNewPatientPhone('');
-    setNewPreferredDate('');
-    setNewPreferredTime('');
-    toast.success(newPatientName + ' adicionado à fila de espera');
+      if (existingPatient) {
+        patientId = existingPatient.id;
+      } else {
+        const { data: newPatient, error: patientError } = await supabase
+          .from('patients')
+          .insert({
+            tenant_id: tenantId,
+            name: newPatientName,
+            whatsapp: newPatientPhone,
+          })
+          .select('id')
+          .single();
+
+        if (patientError) throw patientError;
+        patientId = newPatient.id;
+      }
+
+      // Add to waitlist
+      const { error: waitlistError } = await supabase
+        .from('waitlist')
+        .insert({
+          tenant_id: tenantId,
+          patient_id: patientId,
+          preferred_date: newPreferredDate || null,
+          preferred_time_start: newPreferredTimeStart || null,
+          preferred_time_end: newPreferredTimeEnd || null,
+          priority: waitlist.length + 1,
+          is_active: true,
+        });
+
+      if (waitlistError) throw waitlistError;
+
+      toast.success(newPatientName + ' adicionado à fila de espera');
+      setIsDialogOpen(false);
+      setNewPatientName('');
+      setNewPatientPhone('');
+      setNewPreferredDate('');
+      setNewPreferredTimeStart('');
+      setNewPreferredTimeEnd('');
+      loadWaitlist();
+    } catch (error) {
+      console.error('Error adding to waitlist:', error);
+      toast.error('Erro ao adicionar à fila');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOfferSlot = (id: string, name: string) => {
     toast.success('Vaga oferecida para ' + name);
+    // TODO: Implement actual slot offering via WhatsApp
   };
 
-  const handleRemove = (id: string, name: string) => {
-    setWaitlist(waitlist.filter((w) => w.id !== id));
-    toast.success(name + ' removido da fila');
+  const handleRemove = async (id: string, name: string) => {
+    try {
+      const { error } = await supabase
+        .from('waitlist')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setWaitlist(waitlist.filter((w) => w.id !== id));
+      toast.success(name + ' removido da fila');
+    } catch (error) {
+      console.error('Error removing from waitlist:', error);
+      toast.error('Erro ao remover da fila');
+    }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -147,63 +215,86 @@ export default function Waitlist() {
               Pacientes aguardando por vagas de encaixe
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Adicionar à fila
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Adicionar à fila de espera</DialogTitle>
-                <DialogDescription>
-                  Registre um paciente para receber notificações de vagas disponíveis
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="patientName">Nome do paciente</Label>
-                  <Input
-                    id="patientName"
-                    placeholder="Nome completo"
-                    value={newPatientName}
-                    onChange={(e) => setNewPatientName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="patientPhone">WhatsApp</Label>
-                  <Input
-                    id="patientPhone"
-                    placeholder="(11) 99999-9999"
-                    value={newPatientPhone}
-                    onChange={(e) => setNewPatientPhone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="preferredDate">Data preferida (opcional)</Label>
-                  <Input
-                    id="preferredDate"
-                    type="date"
-                    value={newPreferredDate}
-                    onChange={(e) => setNewPreferredDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="preferredTime">Horário preferido (opcional)</Label>
-                  <Input
-                    id="preferredTime"
-                    placeholder="Ex: Manhã, 14:00-16:00"
-                    value={newPreferredTime}
-                    onChange={(e) => setNewPreferredTime(e.target.value)}
-                  />
-                </div>
-                <Button onClick={handleAddToWaitlist} className="w-full">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+              Atualizar
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
                   Adicionar à fila
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adicionar à fila de espera</DialogTitle>
+                  <DialogDescription>
+                    Registre um paciente para receber notificações de vagas disponíveis
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="patientName">Nome do paciente</Label>
+                    <Input
+                      id="patientName"
+                      placeholder="Nome completo"
+                      value={newPatientName}
+                      onChange={(e) => setNewPatientName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="patientPhone">WhatsApp</Label>
+                    <Input
+                      id="patientPhone"
+                      placeholder="5511999999999"
+                      value={newPatientPhone}
+                      onChange={(e) => setNewPatientPhone(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredDate">Data preferida (opcional)</Label>
+                    <Input
+                      id="preferredDate"
+                      type="date"
+                      value={newPreferredDate}
+                      onChange={(e) => setNewPreferredDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="preferredTimeStart">Horário início</Label>
+                      <Input
+                        id="preferredTimeStart"
+                        type="time"
+                        value={newPreferredTimeStart}
+                        onChange={(e) => setNewPreferredTimeStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="preferredTimeEnd">Horário fim</Label>
+                      <Input
+                        id="preferredTimeEnd"
+                        type="time"
+                        value={newPreferredTimeEnd}
+                        onChange={(e) => setNewPreferredTimeEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleAddToWaitlist} className="w-full" disabled={saving}>
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Adicionar à fila
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats */}
@@ -236,8 +327,8 @@ export default function Waitlist() {
                 <CheckCircle2 className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <p className="text-2xl font-bold">3</p>
-                <p className="text-sm text-muted-foreground">Encaixes este mês</p>
+                <p className="text-2xl font-bold">{waitlist.length - activeCount}</p>
+                <p className="text-sm text-muted-foreground">Inativos</p>
               </div>
             </CardContent>
           </Card>
@@ -272,7 +363,7 @@ export default function Waitlist() {
                   </TableRow>
                 ) : (
                   waitlist.map((entry) => (
-                    <TableRow key={entry.id} className={!entry.isActive ? 'opacity-50' : ''}>
+                    <TableRow key={entry.id} className={!entry.is_active ? 'opacity-50' : ''}>
                       <TableCell>
                         <span className="font-mono text-sm text-muted-foreground">
                           {entry.priority}
@@ -282,30 +373,32 @@ export default function Waitlist() {
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center">
                             <span className="text-sm font-medium text-accent">
-                              {entry.patientName.charAt(0)}
+                              {(entry.patient?.name || 'P').charAt(0)}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium">{entry.patientName}</p>
-                            <p className="text-xs text-muted-foreground">{entry.patientPhone}</p>
+                            <p className="font-medium">{entry.patient?.name || 'Paciente'}</p>
+                            <p className="text-xs text-muted-foreground">{entry.patient?.whatsapp || ''}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          {entry.preferredDate && (
+                          {entry.preferred_date && (
                             <div className="flex items-center gap-1 text-sm">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
-                              <span>{format(new Date(entry.preferredDate), "dd 'de' MMM", { locale: ptBR })}</span>
+                              <span>{format(new Date(entry.preferred_date), "dd 'de' MMM", { locale: ptBR })}</span>
                             </div>
                           )}
-                          {entry.preferredTime && (
+                          {(entry.preferred_time_start || entry.preferred_time_end) && (
                             <div className="flex items-center gap-1 text-sm">
                               <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span>{entry.preferredTime}</span>
+                              <span>
+                                {entry.preferred_time_start || '?'} - {entry.preferred_time_end || '?'}
+                              </span>
                             </div>
                           )}
-                          {!entry.preferredDate && !entry.preferredTime && (
+                          {!entry.preferred_date && !entry.preferred_time_start && (
                             <span className="text-sm text-muted-foreground">Qualquer horário</span>
                           )}
                         </div>
@@ -314,17 +407,17 @@ export default function Waitlist() {
                         <Badge
                           variant="outline"
                           className={
-                            entry.isActive
+                            entry.is_active
                               ? 'border-success/50 bg-success/10 text-success'
                               : 'border-muted-foreground/30'
                           }
                         >
-                          {entry.isActive ? 'Ativo' : 'Inativo'}
+                          {entry.is_active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {format(new Date(entry.createdAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          {entry.created_at && format(new Date(entry.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -336,13 +429,13 @@ export default function Waitlist() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
-                              onClick={() => handleOfferSlot(entry.id, entry.patientName)}
+                              onClick={() => handleOfferSlot(entry.id, entry.patient?.name || 'Paciente')}
                             >
                               <Send className="w-4 h-4 mr-2" />
                               Oferecer vaga
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleRemove(entry.id, entry.patientName)}
+                              onClick={() => handleRemove(entry.id, entry.patient?.name || 'Paciente')}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
