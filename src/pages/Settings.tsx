@@ -84,6 +84,7 @@ export default function Settings() {
   const [useCustomOpenai, setUseCustomOpenai] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [agentGreeting, setAgentGreeting] = useState('Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
+  const [agentBusinessContext, setAgentBusinessContext] = useState('');
   const [savingClinic, setSavingClinic] = useState(false);
 
   // Handle OAuth callback from URL params
@@ -140,6 +141,7 @@ export default function Settings() {
         setUseCustomOpenai(settings.use_custom_openai || false);
         setOpenaiApiKey(settings.openai_api_key || '');
         setAgentGreeting(settings.agent_greeting_message || 'Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
+        setAgentBusinessContext((settings as any).agent_business_context || '');
       }
     } catch (error) {
       console.error('Error loading clinic settings:', error);
@@ -219,7 +221,8 @@ export default function Settings() {
           use_custom_openai: useCustomOpenai,
           openai_api_key: useCustomOpenai ? openaiApiKey : null,
           agent_greeting_message: agentGreeting,
-        }, { onConflict: 'tenant_id' });
+          agent_business_context: agentBusinessContext,
+        } as any, { onConflict: 'tenant_id' });
 
       if (error) throw error;
       toast.success('Configurações da clínica salvas!');
@@ -645,6 +648,30 @@ export default function Settings() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Esta mensagem será usada para iniciar conversas com novos pacientes
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label htmlFor="agentBusinessContext">Contexto do Negócio</Label>
+                  <Textarea
+                    id="agentBusinessContext"
+                    value={agentBusinessContext}
+                    onChange={(e) => setAgentBusinessContext(e.target.value)}
+                    rows={8}
+                    className="resize-none"
+                    placeholder="Descreva seu negócio aqui...
+
+Exemplo:
+- Tipo de clínica: Clínica de Fisioterapia
+- Serviços oferecidos: Fisioterapia ortopédica, RPG, Pilates clínico, Acupuntura
+- Preços: Sessão avulsa R$ 150, Pacote 10 sessões R$ 1.200
+- Diferenciais: Profissionais especializados, equipamentos modernos
+- Informações importantes: Primeira avaliação gratuita, estacionamento no local"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Escreva informações sobre sua clínica, serviços, preços e qualquer detalhe que o agente deve saber para atender seus pacientes. Este texto será usado como contexto em todas as conversas.
                   </p>
                 </div>
 
