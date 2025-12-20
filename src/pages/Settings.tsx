@@ -67,26 +67,36 @@ export default function Settings() {
 
   const loadIntegrationStatus = async () => {
     try {
-      // Check WhatsApp status
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const whatsappResponse = await supabase.functions.invoke('whatsapp-qrcode', {
-        body: { action: 'status' },
-      });
+      // Check WhatsApp status - handle errors gracefully
+      try {
+        const whatsappResponse = await supabase.functions.invoke('whatsapp-qrcode', {
+          body: { action: 'status' },
+        });
+        console.log('WhatsApp status:', whatsappResponse.data);
 
-      if (whatsappResponse.data?.connected) {
-        setWhatsappConnected(true);
+        if (whatsappResponse.data?.connected) {
+          setWhatsappConnected(true);
+        }
+      } catch (e) {
+        console.log('WhatsApp status check failed (instance may not exist yet)');
       }
 
       // Check Google Calendar status
-      const googleResponse = await supabase.functions.invoke('google-calendar-auth', {
-        body: { action: 'status' },
-      });
+      try {
+        const googleResponse = await supabase.functions.invoke('google-calendar-auth', {
+          body: { action: 'status' },
+        });
+        console.log('Google Calendar status:', googleResponse.data);
 
-      if (googleResponse.data?.connected) {
-        setGoogleConnected(true);
-        setGoogleCalendarName(googleResponse.data.calendarId || 'Calendário Principal');
+        if (googleResponse.data?.connected) {
+          setGoogleConnected(true);
+          setGoogleCalendarName(googleResponse.data.calendarId || 'Calendário Principal');
+        }
+      } catch (e) {
+        console.log('Google Calendar status check failed');
       }
     } catch (error) {
       console.error('Error loading status:', error);
@@ -149,7 +159,16 @@ export default function Settings() {
         body: { action: 'create' },
       });
 
+      console.log('WhatsApp create response:', data, error);
+
       if (error) throw error;
+
+      if (data?.alreadyConnected) {
+        setWhatsappConnected(true);
+        setQrModalOpen(false);
+        toast.success('WhatsApp já está conectado!');
+        return;
+      }
 
       if (data?.qrcode) {
         setQrCode(data.qrcode);
@@ -160,7 +179,7 @@ export default function Settings() {
       }
     } catch (error) {
       console.error('Error generating QR:', error);
-      toast.error('Erro ao gerar QR Code. Verifique as configurações da Evolution API.');
+      toast.error('Erro ao gerar QR Code. Verifique se a Evolution API está configurada corretamente.');
       setQrModalOpen(false);
     } finally {
       setQrLoading(false);
