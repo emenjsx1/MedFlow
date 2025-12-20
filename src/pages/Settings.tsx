@@ -48,12 +48,15 @@ export default function Settings() {
   const [googleCalendarName, setGoogleCalendarName] = useState('');
   const [whatsappConnected, setWhatsappConnected] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappState, setWhatsappState] = useState<'open' | 'close' | 'connecting' | 'unknown'>('unknown');
+  const [lastStatusCheck, setLastStatusCheck] = useState<Date | null>(null);
   
   // QR Code modal
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrCode, setQrCode] = useState('');
   const [qrLoading, setQrLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
 
   // Rules state
   const [confirmHoursBefore, setConfirmHoursBefore] = useState(24);
@@ -155,11 +158,18 @@ export default function Settings() {
         });
         console.log('WhatsApp status:', whatsappResponse.data);
 
-        if (whatsappResponse.data?.connected) {
+        const state = whatsappResponse.data?.state as 'open' | 'close' | 'connecting' | undefined;
+        setWhatsappState(state || 'unknown');
+        setLastStatusCheck(new Date());
+
+        if (whatsappResponse.data?.connected || state === 'open') {
           setWhatsappConnected(true);
+        } else {
+          setWhatsappConnected(false);
         }
       } catch (e) {
         console.log('WhatsApp status check failed (instance may not exist yet)');
+        setWhatsappState('unknown');
       }
 
       // Check Google Calendar status
@@ -365,6 +375,7 @@ export default function Settings() {
       if (data?.qrcode) {
         setQrCode(data.qrcode);
         setWhatsappConnected(false);
+        setWhatsappState('connecting');
         toast.success('Conexão reiniciada! Escaneie o novo QR Code.');
         startStatusPolling();
       } else {
@@ -376,6 +387,71 @@ export default function Settings() {
       setQrModalOpen(false);
     } finally {
       setQrLoading(false);
+    }
+  };
+
+  const handleGenerateNewQR = async () => {
+    setQrModalOpen(true);
+    setQrLoading(true);
+    setQrCode('');
+
+    try {
+      // Just request connect to get a fresh QR without deleting instance
+      const { data, error } = await supabase.functions.invoke('whatsapp-qrcode', {
+        body: { action: 'create' },
+      });
+
+      console.log('WhatsApp new QR response:', data, error);
+
+      if (error) throw error;
+
+      if (data?.alreadyConnected) {
+        setWhatsappConnected(true);
+        setWhatsappState('open');
+        setQrModalOpen(false);
+        toast.success('WhatsApp já está conectado!');
+        return;
+      }
+
+      if (data?.qrcode) {
+        setQrCode(data.qrcode);
+        setWhatsappState('connecting');
+        startStatusPolling();
+      } else {
+        throw new Error(data?.error || 'Falha ao gerar QR Code');
+      }
+    } catch (error) {
+      console.error('Error generating new QR:', error);
+      toast.error('Erro ao gerar novo QR Code');
+      setQrModalOpen(false);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleRefreshStatus = async () => {
+    setRefreshingStatus(true);
+    try {
+      const { data } = await supabase.functions.invoke('whatsapp-qrcode', {
+        body: { action: 'status' },
+      });
+
+      const state = data?.state as 'open' | 'close' | 'connecting' | undefined;
+      setWhatsappState(state || 'unknown');
+      setLastStatusCheck(new Date());
+
+      if (data?.connected || state === 'open') {
+        setWhatsappConnected(true);
+      } else {
+        setWhatsappConnected(false);
+      }
+
+      toast.success('Status atualizado');
+    } catch (error) {
+      console.error('Error refreshing status:', error);
+      toast.error('Erro ao atualizar status');
+    } finally {
+      setRefreshingStatus(false);
     }
   };
 
@@ -739,18 +815,58 @@ export default function Settings() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Status Monitor */}
+                  <div className="mb-4 p-3 rounded-lg border bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Status da Conexão</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRefreshStatus}
+                        disabled={refreshingStatus}
+                        className="h-7 px-2"
+                      >
+                        <RefreshCw className={cn("w-3 h-3", refreshingStatus && "animate-spin")} />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "w-2.5 h-2.5 rounded-full",
+                          whatsappState === 'open' && "bg-success animate-pulse",
+                          whatsappState === 'connecting' && "bg-warning animate-pulse",
+                          whatsappState === 'close' && "bg-destructive",
+                          whatsappState === 'unknown' && "bg-muted-foreground"
+                        )}
+                      />
+                      <span className="text-sm">
+                        {whatsappState === 'open' && 'Conectado'}
+                        {whatsappState === 'connecting' && 'Conectando...'}
+                        {whatsappState === 'close' && 'Desconectado'}
+                        {whatsappState === 'unknown' && 'Desconhecido'}
+                      </span>
+                    </div>
+                    {lastStatusCheck && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Última verificação: {lastStatusCheck.toLocaleTimeString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+
                   {whatsappConnected ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Status:</p>
-                        <p className="font-medium text-success">Sessão ativa</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1">
-                          Testar conexão
+                    <div className="space-y-3">
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGenerateNewQR}
+                        >
+                          <QrCode className="w-4 h-4 mr-1" />
+                          Novo QR
                         </Button>
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={handleRestartWhatsapp}
                         >
                           <RefreshCw className="w-4 h-4 mr-1" />
@@ -758,6 +874,7 @@ export default function Settings() {
                         </Button>
                         <Button
                           variant="ghost"
+                          size="sm"
                           className="text-destructive hover:text-destructive"
                           onClick={handleDisconnectWhatsapp}
                         >
@@ -771,14 +888,26 @@ export default function Settings() {
                         <QrCode className="w-4 h-4 mr-2" />
                         Conectar via QR Code
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={handleRestartWhatsapp} 
-                        className="w-full"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Reiniciar Conexão (se travado)
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={handleGenerateNewQR}
+                          className="flex-1"
+                          size="sm"
+                        >
+                          <QrCode className="w-4 h-4 mr-1" />
+                          Gerar novo QR
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleRestartWhatsapp} 
+                          className="flex-1"
+                          size="sm"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Reiniciar (se travado)
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
