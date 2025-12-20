@@ -221,6 +221,7 @@ export type Database = {
         Row: {
           agent_booking_confirmation: string | null
           agent_business_context: string | null
+          agent_faqs: Json | null
           agent_greeting_message: string | null
           appointment_duration_minutes: number | null
           business_hours_end: string | null
@@ -255,6 +256,7 @@ export type Database = {
         Insert: {
           agent_booking_confirmation?: string | null
           agent_business_context?: string | null
+          agent_faqs?: Json | null
           agent_greeting_message?: string | null
           appointment_duration_minutes?: number | null
           business_hours_end?: string | null
@@ -289,6 +291,7 @@ export type Database = {
         Update: {
           agent_booking_confirmation?: string | null
           agent_business_context?: string | null
+          agent_faqs?: Json | null
           agent_greeting_message?: string | null
           appointment_duration_minutes?: number | null
           business_hours_end?: string | null
