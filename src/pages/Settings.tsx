@@ -346,6 +346,39 @@ export default function Settings() {
     }
   };
 
+  const handleRestartWhatsapp = async () => {
+    setQrModalOpen(true);
+    setQrLoading(true);
+    setQrCode('');
+
+    try {
+      toast.info('Reiniciando conexão WhatsApp...');
+      
+      const { data, error } = await supabase.functions.invoke('whatsapp-qrcode', {
+        body: { action: 'restart' },
+      });
+
+      console.log('WhatsApp restart response:', data, error);
+
+      if (error) throw error;
+
+      if (data?.qrcode) {
+        setQrCode(data.qrcode);
+        setWhatsappConnected(false);
+        toast.success('Conexão reiniciada! Escaneie o novo QR Code.');
+        startStatusPolling();
+      } else {
+        throw new Error(data?.error || 'Falha ao reiniciar conexão');
+      }
+    } catch (error) {
+      console.error('Error restarting WhatsApp:', error);
+      toast.error('Erro ao reiniciar WhatsApp');
+      setQrModalOpen(false);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
   const handleSaveRules = () => {
     toast.success('Regras salvas com sucesso!');
   };
@@ -717,6 +750,13 @@ export default function Settings() {
                           Testar conexão
                         </Button>
                         <Button
+                          variant="outline"
+                          onClick={handleRestartWhatsapp}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Reiniciar
+                        </Button>
+                        <Button
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
                           onClick={handleDisconnectWhatsapp}
@@ -726,10 +766,20 @@ export default function Settings() {
                       </div>
                     </div>
                   ) : (
-                    <Button onClick={handleConnectWhatsapp} className="w-full">
-                      <QrCode className="w-4 h-4 mr-2" />
-                      Conectar via QR Code
-                    </Button>
+                    <div className="space-y-3">
+                      <Button onClick={handleConnectWhatsapp} className="w-full">
+                        <QrCode className="w-4 h-4 mr-2" />
+                        Conectar via QR Code
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleRestartWhatsapp} 
+                        className="w-full"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Reiniciar Conexão (se travado)
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
