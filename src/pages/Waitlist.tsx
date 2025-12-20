@@ -172,9 +172,46 @@ export default function Waitlist() {
     }
   };
 
-  const handleOfferSlot = (id: string, name: string) => {
-    toast.success('Vaga oferecida para ' + name);
-    // TODO: Implement actual slot offering via WhatsApp
+  const handleOfferSlot = async (id: string, name: string, whatsapp: string | undefined) => {
+    if (!whatsapp) {
+      toast.error('Paciente não tem WhatsApp cadastrado');
+      return;
+    }
+    
+    try {
+      // Get next available slots
+      const today = new Date();
+      const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
+      const { data: appointments } = await supabase
+        .from('appointments')
+        .select('scheduled_at')
+        .eq('tenant_id', tenantId)
+        .gte('scheduled_at', today.toISOString())
+        .lte('scheduled_at', nextWeek.toISOString())
+        .in('status', ['cancelled', 'no_show', 'in_replacement']);
+      
+      let slotMessage = 'Temos vagas disponíveis esta semana!';
+      if (appointments && appointments.length > 0) {
+        const slot = new Date(appointments[0].scheduled_at);
+        slotMessage = `Temos uma vaga disponível: ${format(slot, "dd/MM 'às' HH:mm", { locale: ptBR })}`;
+      }
+      
+      const { error } = await supabase.functions.invoke('send-manual-message', {
+        body: {
+          tenantId,
+          patientPhone: whatsapp,
+          message: `Olá ${name}! 🎉\n\n${slotMessage}\n\nDeseja agendar? Responda SIM para confirmar.\n\nAguardamos sua resposta!`,
+        },
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`Vaga oferecida para ${name}`);
+    } catch (error) {
+      console.error('Error offering slot:', error);
+      toast.error('Erro ao enviar oferta de vaga');
+    }
   };
 
   const handleRemove = async (id: string, name: string) => {
@@ -296,6 +333,54 @@ export default function Waitlist() {
             </Dialog>
           </div>
         </div>
+
+        {/* Explicação da fila de espera */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Como funciona a Fila de Espera?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-primary">1</span>
+              </div>
+              <div>
+                <p className="font-medium">Pacientes aguardando vagas</p>
+                <p className="text-muted-foreground">Adicione pacientes que querem consulta mas não encontraram horário disponível.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-primary">2</span>
+              </div>
+              <div>
+                <p className="font-medium">Prioridade automática</p>
+                <p className="text-muted-foreground">Pacientes são ordenados por ordem de entrada. O primeiro da fila tem prioridade.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-primary">3</span>
+              </div>
+              <div>
+                <p className="font-medium">Oferecer vaga</p>
+                <p className="text-muted-foreground">Quando uma consulta é cancelada, clique em "Oferecer para fila" no Painel do Dia para notificar os pacientes da fila via WhatsApp.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+              </div>
+              <div>
+                <p className="font-medium">Preenchimento</p>
+                <p className="text-muted-foreground">O paciente responde via WhatsApp confirmando interesse e a vaga é preenchida!</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -429,7 +514,7 @@ export default function Waitlist() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
-                              onClick={() => handleOfferSlot(entry.id, entry.patient?.name || 'Paciente')}
+                              onClick={() => handleOfferSlot(entry.id, entry.patient?.name || 'Paciente', entry.patient?.whatsapp)}
                             >
                               <Send className="w-4 h-4 mr-2" />
                               Oferecer vaga
