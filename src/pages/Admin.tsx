@@ -69,7 +69,7 @@ export default function Admin() {
   const totalUsers = mockTenants.reduce((acc, t) => acc + t.users, 0);
 
   return (
-    <DashboardLayout>
+    <DashboardLayout requireAdmin>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Administração</h1>
