@@ -293,16 +293,68 @@ Deno.serve(async (req) => {
         .update({ whatsapp_connected: false, whatsapp_session_id: null })
         .eq('tenant_id', tenantId)
 
-      // If restart, create a new instance immediately
+      // If restart, ensure we can return a fresh QR code reliably
       if (action === 'restart') {
-        console.log('Creating new instance after restart...')
-        
-        // Wait a moment for cleanup
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
+        console.log('Restart requested: attempting to recreate or re-connect instance...')
+
         const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`
         console.log('Restart webhook URL:', webhookUrl)
-        
+
+        // Wait a bit for Evolution to process delete (it can be async)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        // Poll whether instance is gone
+        let stillExists = false
+        for (let i = 0; i < 5; i++) {
+          const checkRes = await fetch(
+            `${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${instanceName}`,
+            { method: 'GET', headers: { apikey: EVOLUTION_API_KEY } }
+          )
+
+          const checkData = await checkRes.json().catch(() => null)
+          stillExists = Array.isArray(checkData) && checkData.length > 0
+          console.log('Restart existence check:', { attempt: i + 1, stillExists })
+
+          if (!stillExists) break
+          await new Promise(resolve => setTimeout(resolve, 1500))
+        }
+
+        const ensureQr = async (reason: string) => {
+          console.log('Fetching QR code during restart. Reason:', reason)
+          const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
+            method: 'GET',
+            headers: { apikey: EVOLUTION_API_KEY },
+          })
+          const qrData = await qrResponse.json()
+          const qrCode = qrData.base64 || qrData.qrcode?.base64 || qrData.code
+
+          if (!qrCode) {
+            console.error('Restart: failed to obtain QR code:', qrData)
+            return null
+          }
+
+          await supabase
+            .from('tenant_settings')
+            .upsert({
+              tenant_id: tenantId,
+              whatsapp_session_id: instanceName,
+              whatsapp_connected: false,
+            }, { onConflict: 'tenant_id' })
+
+          return qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`
+        }
+
+        if (stillExists) {
+          const qrcode = await ensureQr('instance-still-exists')
+          if (qrcode) {
+            return new Response(
+              JSON.stringify({ success: true, qrcode, instanceName, restarted: true, reused: true }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        }
+
+        console.log('Creating new instance after restart...')
         const createResponse = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
           method: 'POST',
           headers: {
@@ -318,48 +370,46 @@ Deno.serve(async (req) => {
               byEvents: false,
               base64: false,
               headers: {},
-              events: [
-                'MESSAGES_UPSERT',
-                'CONNECTION_UPDATE',
-                'QRCODE_UPDATED',
-              ],
+              events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'],
             },
           }),
         })
 
-        const createData = await createResponse.json()
+        const createData = await createResponse.json().catch(() => ({}))
         console.log('Restart create response:', JSON.stringify(createData))
 
-        // Get QR Code
-        const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
-          method: 'GET',
-          headers: {
-            'apikey': EVOLUTION_API_KEY,
-          },
-        })
-
-        const qrData = await qrResponse.json()
-        const qrCode = qrData.base64 || qrData.qrcode?.base64 || createData.qrcode?.base64
-
-        if (qrCode) {
-          await supabase
-            .from('tenant_settings')
-            .upsert({
-              tenant_id: tenantId,
-              whatsapp_session_id: instanceName,
-              whatsapp_connected: false,
-            }, { onConflict: 'tenant_id' })
+        if (!createResponse.ok) {
+          const qrcode = await ensureQr('create-failed')
+          if (qrcode) {
+            return new Response(
+              JSON.stringify({ success: true, qrcode, instanceName, restarted: true, reused: true }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
 
           return new Response(
-            JSON.stringify({ 
-              success: true, 
-              qrcode: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
-              instanceName,
-              restarted: true
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Failed to restart WhatsApp instance', details: createData }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
+
+        const qrcode = createData.qrcode?.base64
+          ? (createData.qrcode.base64.startsWith('data:')
+              ? createData.qrcode.base64
+              : `data:image/png;base64,${createData.qrcode.base64}`)
+          : await ensureQr('created-no-qrcode')
+
+        if (!qrcode) {
+          return new Response(
+            JSON.stringify({ error: 'Restart succeeded but QR code could not be generated' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, qrcode, instanceName, restarted: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
       return new Response(
