@@ -1,7 +1,10 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
+import { Button } from '@/components/ui/button';
+import { Menu, X } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -11,6 +14,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, requireAdmin = false }: DashboardLayoutProps) {
   const { user, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -21,6 +25,17 @@ export default function DashboardLayout({ children, requireAdmin = false }: Dash
       }
     }
   }, [user, loading, navigate, requireAdmin, isAdmin]);
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (loading) {
     return (
@@ -37,9 +52,32 @@ export default function DashboardLayout({ children, requireAdmin = false }: Dash
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      <main className="pl-64">
-        <div className="p-8">
+      {/* Mobile Header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-border z-40 flex items-center justify-between px-4">
+        <Logo size="sm" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </Button>
+      </header>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main Content */}
+      <main className="lg:pl-64 pt-16 lg:pt-0">
+        <div className="p-4 md:p-6 lg:p-8">
           {children}
         </div>
       </main>

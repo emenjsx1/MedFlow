@@ -13,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import Logo from '@/components/Logo';
 
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
 const navItems = [
   {
     label: 'Painel do Dia',
@@ -50,7 +55,7 @@ const adminOnlyItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { user, role, signOut } = useAuth();
   const location = useLocation();
 
@@ -63,9 +68,19 @@ export default function Sidebar() {
     ? adminOnlyItems.filter((item) => item.roles.includes(role))
     : [];
 
+  const handleNavClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
     <aside
-      className="fixed left-0 top-0 h-screen w-64 flex flex-col z-50"
+      className={cn(
+        "fixed left-0 top-0 h-screen w-64 flex flex-col z-50 transition-transform duration-300",
+        "lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}
       style={{ background: 'var(--gradient-sidebar)' }}
     >
       {/* Logo */}
@@ -88,6 +103,7 @@ export default function Sidebar() {
             <NavLink
               key={item.href}
               to={item.href}
+              onClick={handleNavClick}
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                 isActive
@@ -116,6 +132,7 @@ export default function Sidebar() {
                 <NavLink
                   key={item.href}
                   to={item.href}
+                  onClick={handleNavClick}
                   className={cn(
                     'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                     isActive
@@ -135,7 +152,7 @@ export default function Sidebar() {
       {/* User section */}
       <div className="p-4 border-t border-sidebar-border/50">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center shrink-0">
             <span className="text-sm font-medium text-sidebar-accent-foreground">
               {user?.email?.charAt(0).toUpperCase()}
             </span>
@@ -151,7 +168,10 @@ export default function Sidebar() {
         </div>
         <Button
           variant="ghost"
-          onClick={signOut}
+          onClick={() => {
+            signOut();
+            if (onClose) onClose();
+          }}
           className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
         >
           <LogOut className="w-4 h-4 mr-2" />
