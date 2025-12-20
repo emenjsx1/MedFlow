@@ -100,6 +100,9 @@ export default function Dashboard() {
   const handleAction = async (id: string, action: string) => {
     console.log('Action:', action, 'on appointment:', id);
     
+    const appointment = appointments.find(a => a.id === id);
+    if (!appointment) return;
+    
     try {
       type AppointmentStatus = 'confirmed' | 'cancelled' | 'no_show' | 'pending' | 'rescheduled' | 'in_replacement' | 'filled';
       let newStatus: AppointmentStatus | null = null;
@@ -109,10 +112,83 @@ export default function Dashboard() {
           newStatus = 'confirmed';
           break;
         case 'cancel':
+        case 'mark_cancelled':
           newStatus = 'cancelled';
           break;
         case 'no_show':
+        case 'mark_noshow':
           newStatus = 'no_show';
+          break;
+        case 'resend':
+          // Send confirmation message via WhatsApp
+          if (appointment.patient_phone) {
+            const { error } = await supabase.functions.invoke('send-manual-message', {
+              body: {
+                tenantId,
+                patientPhone: appointment.patient_phone,
+                message: `Olá ${appointment.patient_name}! 📋\n\nLembramos da sua consulta agendada para:\n📅 ${format(new Date(appointment.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}\n\nPor favor, confirme sua presença respondendo esta mensagem.\n\nAtenciosamente,\nEquipe da Clínica`,
+              },
+            });
+            
+            if (error) throw error;
+            
+            // Update last_contact_at
+            await supabase
+              .from('appointments')
+              .update({ last_contact_at: new Date().toISOString() })
+              .eq('id', id);
+            
+            toast({
+              title: 'Confirmação enviada',
+              description: `Mensagem enviada para ${appointment.patient_name}`,
+            });
+            loadAppointments();
+          } else {
+            toast({
+              title: 'Erro',
+              description: 'Paciente não tem telefone cadastrado.',
+              variant: 'destructive',
+            });
+          }
+          return;
+          
+        case 'offer_waitlist':
+          // Mark as in_replacement and offer to waitlist
+          newStatus = 'in_replacement';
+          
+          // Get waitlist patients and offer them the slot
+          const { data: waitlistPatients } = await supabase
+            .from('waitlist')
+            .select('*, patient:patients(name, whatsapp)')
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .order('priority', { ascending: true })
+            .limit(3);
+          
+          if (waitlistPatients && waitlistPatients.length > 0) {
+            for (const entry of waitlistPatients) {
+              if (entry.patient?.whatsapp) {
+                await supabase.functions.invoke('send-manual-message', {
+                  body: {
+                    tenantId,
+                    patientPhone: entry.patient.whatsapp,
+                    message: `Olá ${entry.patient.name}! 🎉\n\nSurgiu uma vaga disponível:\n📅 ${format(new Date(appointment.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}\n\nDeseja agendar? Responda SIM para confirmar ou NÃO para recusar.\n\nAguardamos sua resposta!`,
+                  },
+                });
+              }
+            }
+            
+            toast({
+              title: 'Vaga oferecida',
+              description: `Oferecida para ${waitlistPatients.length} paciente(s) da fila de espera`,
+            });
+          } else {
+            toast({
+              title: 'Aviso',
+              description: 'Nenhum paciente ativo na fila de espera.',
+              variant: 'default',
+            });
+          }
           break;
       }
 
@@ -135,7 +211,7 @@ export default function Dashboard() {
       console.error('Error updating appointment:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível atualizar o agendamento.',
+        description: 'Não foi possível realizar a ação.',
         variant: 'destructive',
       });
     }
