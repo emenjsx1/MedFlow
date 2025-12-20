@@ -246,28 +246,93 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (action === 'disconnect') {
+    if (action === 'disconnect' || action === 'restart') {
+      console.log('Disconnecting/restarting instance:', instanceName)
+      
       // Logout from WhatsApp
-      await fetch(`${EVOLUTION_API_URL}/instance/logout/${instanceName}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-        },
-      })
+      try {
+        await fetch(`${EVOLUTION_API_URL}/instance/logout/${instanceName}`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': EVOLUTION_API_KEY,
+          },
+        })
+      } catch (e) {
+        console.log('Logout error (may be expected):', e)
+      }
 
       // Delete instance
-      await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': EVOLUTION_API_KEY,
-        },
-      })
+      try {
+        await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': EVOLUTION_API_KEY,
+          },
+        })
+      } catch (e) {
+        console.log('Delete error (may be expected):', e)
+      }
 
       // Update database
       await supabase
         .from('tenant_settings')
         .update({ whatsapp_connected: false, whatsapp_session_id: null })
         .eq('tenant_id', tenantId)
+
+      // If restart, create a new instance immediately
+      if (action === 'restart') {
+        console.log('Creating new instance after restart...')
+        
+        // Wait a moment for cleanup
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        const createResponse = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': EVOLUTION_API_KEY,
+          },
+          body: JSON.stringify({
+            instanceName,
+            qrcode: true,
+            integration: 'WHATSAPP-BAILEYS',
+          }),
+        })
+
+        const createData = await createResponse.json()
+        console.log('Restart create response:', JSON.stringify(createData))
+
+        // Get QR Code
+        const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
+          method: 'GET',
+          headers: {
+            'apikey': EVOLUTION_API_KEY,
+          },
+        })
+
+        const qrData = await qrResponse.json()
+        const qrCode = qrData.base64 || qrData.qrcode?.base64 || createData.qrcode?.base64
+
+        if (qrCode) {
+          await supabase
+            .from('tenant_settings')
+            .upsert({
+              tenant_id: tenantId,
+              whatsapp_session_id: instanceName,
+              whatsapp_connected: false,
+            }, { onConflict: 'tenant_id' })
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              qrcode: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
+              instanceName,
+              restarted: true
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
 
       return new Response(
         JSON.stringify({ success: true }),
