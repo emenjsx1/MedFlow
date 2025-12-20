@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')
+    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')?.replace(/\/$/, '') // Remove trailing slash
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -24,6 +24,8 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('Evolution API URL:', EVOLUTION_API_URL)
 
     // Get tenant_id from auth
     const authHeader = req.headers.get('Authorization')
@@ -67,33 +69,77 @@ Deno.serve(async (req) => {
     const instanceName = `clinic_${tenantId.substring(0, 8)}`
 
     const { action } = await req.json()
+    console.log('Action:', action, 'Instance:', instanceName)
 
     if (action === 'create') {
-      // Create instance in Evolution API
-      console.log('Creating WhatsApp instance:', instanceName)
-      
-      const createResponse = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
-        method: 'POST',
+      // First, try to fetch existing instance
+      console.log('Checking if instance exists...')
+      const fetchResponse = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'apikey': EVOLUTION_API_KEY,
         },
-        body: JSON.stringify({
-          instanceName,
-          qrcode: true,
-          integration: 'WHATSAPP-BAILEYS',
-        }),
       })
+      
+      const fetchData = await fetchResponse.json()
+      console.log('Fetch instances response:', JSON.stringify(fetchData))
 
-      const createData = await createResponse.json()
-      console.log('Create response:', createData)
-
-      if (!createResponse.ok) {
-        // Instance might already exist, try to connect
-        console.log('Instance might exist, trying to connect...')
+      let instanceExists = false
+      if (Array.isArray(fetchData) && fetchData.length > 0) {
+        instanceExists = true
+        console.log('Instance already exists')
       }
 
-      // Get QR Code
+      if (!instanceExists) {
+        // Create instance in Evolution API
+        console.log('Creating WhatsApp instance:', instanceName)
+        
+        const createResponse = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': EVOLUTION_API_KEY,
+          },
+          body: JSON.stringify({
+            instanceName,
+            qrcode: true,
+            integration: 'WHATSAPP-BAILEYS',
+          }),
+        })
+
+        const createData = await createResponse.json()
+        console.log('Create response:', JSON.stringify(createData))
+
+        if (!createResponse.ok && !createData.instance) {
+          return new Response(
+            JSON.stringify({ error: 'Failed to create instance', details: createData }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // If qrcode is in create response, use it directly
+        if (createData.qrcode?.base64) {
+          await supabase
+            .from('tenant_settings')
+            .upsert({
+              tenant_id: tenantId,
+              whatsapp_session_id: instanceName,
+              whatsapp_connected: false,
+            }, { onConflict: 'tenant_id' })
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              qrcode: createData.qrcode.base64,
+              instanceName 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+
+      // Get QR Code via connect endpoint
+      console.log('Fetching QR code...')
       const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
         method: 'GET',
         headers: {
@@ -102,9 +148,12 @@ Deno.serve(async (req) => {
       })
 
       const qrData = await qrResponse.json()
-      console.log('QR response status:', qrResponse.status)
+      console.log('QR response:', JSON.stringify(qrData))
 
-      if (qrData.base64) {
+      // Check different possible QR code locations in response
+      const qrCode = qrData.base64 || qrData.qrcode?.base64 || qrData.code
+
+      if (qrCode) {
         // Save session info to database
         await supabase
           .from('tenant_settings')
@@ -117,7 +166,27 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            qrcode: qrData.base64,
+            qrcode: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
+            instanceName 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Maybe already connected?
+      if (qrData.instance?.state === 'open') {
+        await supabase
+          .from('tenant_settings')
+          .upsert({
+            tenant_id: tenantId,
+            whatsapp_session_id: instanceName,
+            whatsapp_connected: true,
+          }, { onConflict: 'tenant_id' })
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            alreadyConnected: true,
             instanceName 
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -140,9 +209,21 @@ Deno.serve(async (req) => {
       })
 
       const statusData = await statusResponse.json()
-      console.log('Status response:', statusData)
+      console.log('Status response:', JSON.stringify(statusData))
 
-      const isConnected = statusData.instance?.state === 'open'
+      // Handle case where instance doesn't exist
+      if (statusResponse.status === 404) {
+        return new Response(
+          JSON.stringify({ 
+            connected: false,
+            state: 'not_created',
+            instanceName
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const isConnected = statusData.instance?.state === 'open' || statusData.state === 'open'
 
       // Update database
       if (isConnected) {
@@ -158,7 +239,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           connected: isConnected,
-          state: statusData.instance?.state,
+          state: statusData.instance?.state || statusData.state,
           instanceName
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,10 +255,18 @@ Deno.serve(async (req) => {
         },
       })
 
+      // Delete instance
+      await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': EVOLUTION_API_KEY,
+        },
+      })
+
       // Update database
       await supabase
         .from('tenant_settings')
-        .update({ whatsapp_connected: false })
+        .update({ whatsapp_connected: false, whatsapp_session_id: null })
         .eq('tenant_id', tenantId)
 
       return new Response(
