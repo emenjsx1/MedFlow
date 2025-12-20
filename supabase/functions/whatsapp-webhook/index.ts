@@ -252,14 +252,14 @@ Deno.serve(async (req) => {
 
     console.log('Processing message from:', patientPhone, 'Name:', patientName, 'Text:', messageText, 'Id:', messageId, 'IsAudio:', isAudioMessage)
 
-    // Find tenant by instance name
+    // Find tenant by instance name (instance name is clinic_{tenant_id_without_hyphens})
     const instanceName = instance || ''
-    const tenantIdPrefix = instanceName.replace('clinic_', '')
     
+    // Extract tenant_id from whatsapp_session_id stored in database
     const { data: settings, error: settingsError } = await supabase
       .from('tenant_settings')
       .select('tenant_id')
-      .like('whatsapp_session_id', `clinic_${tenantIdPrefix}%`)
+      .eq('whatsapp_session_id', instanceName)
       .maybeSingle()
 
     if (settingsError || !settings) {

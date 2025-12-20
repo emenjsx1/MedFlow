@@ -83,7 +83,8 @@ Deno.serve(async (req) => {
     }
 
     const tenantId = profile.tenant_id
-    const instanceName = `clinic_${tenantId.substring(0, 8)}`
+    // Use full tenant_id to guarantee unique instance per account
+    const instanceName = `clinic_${tenantId.replace(/-/g, '')}`
 
     const { action } = await req.json()
     console.log('Action:', action, 'Instance:', instanceName)

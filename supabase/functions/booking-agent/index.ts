@@ -507,7 +507,7 @@ Responda de forma natural e amigável em português brasileiro.`
 
     // Send reply via WhatsApp (Evolution API)
     if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
-      const instanceName = `clinic_${tenantId.substring(0, 8)}`
+      const instanceName = `clinic_${tenantId.replace(/-/g, '')}`
       
       // Add 10 second delay before sending response
       console.log('Waiting 10 seconds before sending reply...')
