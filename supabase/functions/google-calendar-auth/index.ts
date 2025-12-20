@@ -35,6 +35,9 @@ Deno.serve(async (req) => {
 
       console.log('Processing OAuth callback for state:', state)
 
+      // State format: tenantId|returnUrl
+      const [tenantId, returnUrl] = state.split('|')
+
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -52,11 +55,12 @@ Deno.serve(async (req) => {
       console.log('Token exchange completed')
 
       if (tokens.error) {
-        console.error('Token error:', tokens.error)
-        return new Response(
-          `<html><body><script>window.opener.postMessage({error: '${tokens.error}'}, '*'); window.close();</script></body></html>`,
-          { headers: { ...corsHeaders, 'Content-Type': 'text/html' } }
-        )
+        console.error('Token error:', tokens.error, tokens.error_description)
+        const errorUrl = `${returnUrl || '/settings'}?google_error=${encodeURIComponent(tokens.error_description || tokens.error)}`
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, 'Location': errorUrl }
+        })
       }
 
       // Get user's calendars
@@ -65,12 +69,11 @@ Deno.serve(async (req) => {
       })
 
       const calendars = await calendarsResponse.json()
+      console.log('Calendars fetched:', calendars.items?.length || 0)
+      
       const primaryCalendar = calendars.items?.find((c: any) => c.primary) || calendars.items?.[0]
 
-      // State contains tenant_id
-      const tenantId = state
-
-      // Save tokens to database (encrypted in production)
+      // Save tokens and calendar info to database
       await supabase
         .from('tenant_settings')
         .upsert({
@@ -79,20 +82,14 @@ Deno.serve(async (req) => {
           google_calendar_id: primaryCalendar?.id || 'primary',
         }, { onConflict: 'tenant_id' })
 
-      console.log('Calendar connected for tenant:', tenantId)
+      console.log('Calendar connected for tenant:', tenantId, 'Calendar:', primaryCalendar?.summary)
 
-      // Close popup and notify parent
-      return new Response(
-        `<html><body><script>
-          window.opener.postMessage({
-            success: true, 
-            calendarId: '${primaryCalendar?.id || 'primary'}',
-            calendarName: '${primaryCalendar?.summary || 'Primary Calendar'}'
-          }, '*'); 
-          window.close();
-        </script></body></html>`,
-        { headers: { ...corsHeaders, 'Content-Type': 'text/html' } }
-      )
+      // Redirect back to settings with success
+      const successUrl = `${returnUrl || '/settings'}?google_success=true&calendar_name=${encodeURIComponent(primaryCalendar?.summary || 'Calendário')}`
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': successUrl }
+      })
     }
 
     // Generate OAuth URL
@@ -131,7 +128,9 @@ Deno.serve(async (req) => {
 
     if (body.action === 'getAuthUrl') {
       const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar-auth`
-      const state = profile.tenant_id
+      // Include return URL in state so we can redirect back after OAuth
+      const returnUrl = body.returnUrl || ''
+      const state = `${profile.tenant_id}|${returnUrl}`
 
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
       authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID)
@@ -142,7 +141,7 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set('prompt', 'consent')
       authUrl.searchParams.set('state', state)
 
-      console.log('Generated auth URL for tenant:', state)
+      console.log('Generated auth URL for tenant:', profile.tenant_id)
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),
