@@ -37,8 +37,12 @@ const navItems = [
     label: 'Configurações',
     href: '/settings',
     icon: Settings,
-    roles: ['admin'],
+    roles: ['admin', 'staff'],
   },
+];
+
+// Itens exclusivos para admin - não aparecem no menu normal
+const adminOnlyItems = [
   {
     label: 'Usuários',
     href: '/users',
@@ -61,6 +65,11 @@ export default function Sidebar() {
     (item) => !role || item.roles.includes(role)
   );
 
+  // Admin vê também os itens exclusivos
+  const adminItems = role === 'admin' 
+    ? adminOnlyItems.filter((item) => item.roles.includes(role))
+    : [];
+
   return (
     <aside
       className="fixed left-0 top-0 h-screen w-64 flex flex-col z-50"
@@ -82,7 +91,7 @@ export default function Sidebar() {
       <Separator className="bg-sidebar-border/50" />
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {filteredNavItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
@@ -103,6 +112,36 @@ export default function Sidebar() {
             </NavLink>
           );
         })}
+
+        {/* Admin-only section */}
+        {adminItems.length > 0 && (
+          <>
+            <Separator className="my-3 bg-sidebar-border/50" />
+            <p className="px-4 text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider mb-2">
+              Administração
+            </p>
+            {adminItems.map((item) => {
+              const isActive = location.pathname === item.href;
+              const Icon = item.icon;
+
+              return (
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                    isActive
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                      : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* User section */}

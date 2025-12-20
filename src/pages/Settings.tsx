@@ -475,7 +475,7 @@ export default function Settings() {
   };
 
   return (
-    <DashboardLayout requireAdmin>
+    <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div>
