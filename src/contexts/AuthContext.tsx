@@ -67,6 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!roleError && roleData) {
         setRole(roleData.role as UserRole);
+      } else {
+        // Default to 'staff' if no role found
+        setRole('staff');
       }
 
       // Fetch tenant_id from profile
