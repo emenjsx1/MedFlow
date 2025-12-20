@@ -107,19 +107,16 @@ Deno.serve(async (req) => {
       )
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    
-    // Create a client with the user's token to validate it
+    const token = authHeader.replace('Bearer ', '').trim()
+
+    // Validate the JWT using an ANON client (service role client cannot validate user sessions)
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
-    const userSupabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    })
-    
-    const { data: { user }, error: userError } = await userSupabase.auth.getUser()
+    const authClient = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!)
+
+    const {
+      data: { user },
+      error: userError,
+    } = await authClient.auth.getUser(token)
 
     if (userError || !user) {
       console.error('Auth error:', userError)
