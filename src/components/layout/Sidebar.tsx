@@ -49,12 +49,6 @@ const adminOnlyItems = [
     icon: Users,
     roles: ['admin'],
   },
-  {
-    label: 'Administração',
-    href: '/admin',
-    icon: Shield,
-    roles: ['admin'],
-  },
 ];
 
 export default function Sidebar() {
