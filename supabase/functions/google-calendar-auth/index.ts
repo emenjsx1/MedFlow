@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     }
 
     // Generate OAuth URL or handle actions
-    const authHeader = req.headers.get('Authorization')
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -107,25 +107,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Validate the JWT using an ANON client (no session storage in functions)
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
-    const authClient = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    })
+    const accessToken = authHeader.replace(/^Bearer\s+/i, '').trim()
+    if (!accessToken) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const {
       data: { user },
       error: userError,
-    } = await authClient.auth.getUser()
+    } = await supabase.auth.getUser(accessToken)
 
     if (userError || !user) {
       console.error('Auth error:', userError)
