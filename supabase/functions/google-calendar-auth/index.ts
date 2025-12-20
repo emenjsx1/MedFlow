@@ -73,6 +73,9 @@ Deno.serve(async (req) => {
       
       const primaryCalendar = calendars.items?.find((c: any) => c.primary) || calendars.items?.[0]
 
+      // Calculate token expiration
+      const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString()
+
       // Save tokens and calendar info to database
       await supabase
         .from('tenant_settings')
@@ -80,6 +83,9 @@ Deno.serve(async (req) => {
           tenant_id: tenantId,
           google_calendar_connected: true,
           google_calendar_id: primaryCalendar?.id || 'primary',
+          google_access_token: tokens.access_token,
+          google_refresh_token: tokens.refresh_token,
+          google_token_expires_at: expiresAt,
         }, { onConflict: 'tenant_id' })
 
       console.log('Calendar connected for tenant:', tenantId, 'Calendar:', primaryCalendar?.summary)
@@ -168,7 +174,13 @@ Deno.serve(async (req) => {
     if (body.action === 'disconnect') {
       await supabase
         .from('tenant_settings')
-        .update({ google_calendar_connected: false, google_calendar_id: null })
+        .update({ 
+          google_calendar_connected: false, 
+          google_calendar_id: null,
+          google_access_token: null,
+          google_refresh_token: null,
+          google_token_expires_at: null,
+        })
         .eq('tenant_id', profile.tenant_id)
 
       return new Response(
