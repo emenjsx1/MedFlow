@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const instanceName = `clinic_${tenantId.substring(0, 8)}`
+    const instanceName = `clinic_${tenantId.replace(/-/g, '')}`
     
     const evolutionResponse = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
       method: 'POST',
