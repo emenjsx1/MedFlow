@@ -29,7 +29,13 @@ import {
   RefreshCw,
   Loader2,
   QrCode,
+  Building2,
+  MapPin,
+  Phone,
+  Bot,
+  Key,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +70,19 @@ export default function Settings() {
     'Olá {nome}, não recebemos sua confirmação. Sua consulta está marcada para {hora}. Confirma? 1-Sim, 2-Cancelar'
   );
 
+  // Clinic config state
+  const [clinicName, setClinicName] = useState('');
+  const [clinicAddress, setClinicAddress] = useState('');
+  const [clinicPhone, setClinicPhone] = useState('');
+  const [businessHoursStart, setBusinessHoursStart] = useState('08:00');
+  const [businessHoursEnd, setBusinessHoursEnd] = useState('18:00');
+  const [workingDays, setWorkingDays] = useState<string[]>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+  const [appointmentDuration, setAppointmentDuration] = useState(30);
+  const [useCustomOpenai, setUseCustomOpenai] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [agentGreeting, setAgentGreeting] = useState('Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
+  const [savingClinic, setSavingClinic] = useState(false);
+
   // Handle OAuth callback from URL params
   useEffect(() => {
     const googleSuccess = searchParams.get('google_success');
@@ -82,10 +101,47 @@ export default function Settings() {
     }
   }, [searchParams, navigate]);
 
-  // Load initial status
+  // Load initial status and clinic settings
   useEffect(() => {
     loadIntegrationStatus();
+    loadClinicSettings();
   }, []);
+
+  const loadClinicSettings = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!profile?.tenant_id) return;
+
+      const { data: settings } = await supabase
+        .from('tenant_settings')
+        .select('*')
+        .eq('tenant_id', profile.tenant_id)
+        .maybeSingle();
+
+      if (settings) {
+        setClinicName(settings.clinic_name || '');
+        setClinicAddress(settings.clinic_address || '');
+        setClinicPhone(settings.clinic_phone || '');
+        setBusinessHoursStart(settings.business_hours_start || '08:00');
+        setBusinessHoursEnd(settings.business_hours_end || '18:00');
+        setWorkingDays(settings.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+        setAppointmentDuration(settings.appointment_duration_minutes || 30);
+        setUseCustomOpenai(settings.use_custom_openai || false);
+        setOpenaiApiKey(settings.openai_api_key || '');
+        setAgentGreeting(settings.agent_greeting_message || 'Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
+      }
+    } catch (error) {
+      console.error('Error loading clinic settings:', error);
+    }
+  };
 
   const loadIntegrationStatus = async () => {
     try {
@@ -123,6 +179,54 @@ export default function Settings() {
     } catch (error) {
       console.error('Error loading status:', error);
     }
+  };
+
+  const handleSaveClinicSettings = async () => {
+    setSavingClinic(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!profile?.tenant_id) throw new Error('Tenant not found');
+
+      const { error } = await supabase
+        .from('tenant_settings')
+        .upsert({
+          tenant_id: profile.tenant_id,
+          clinic_name: clinicName,
+          clinic_address: clinicAddress,
+          clinic_phone: clinicPhone,
+          business_hours_start: businessHoursStart,
+          business_hours_end: businessHoursEnd,
+          working_days: workingDays,
+          appointment_duration_minutes: appointmentDuration,
+          use_custom_openai: useCustomOpenai,
+          openai_api_key: useCustomOpenai ? openaiApiKey : null,
+          agent_greeting_message: agentGreeting,
+        }, { onConflict: 'tenant_id' });
+
+      if (error) throw error;
+      toast.success('Configurações da clínica salvas!');
+    } catch (error) {
+      console.error('Error saving clinic settings:', error);
+      toast.error('Erro ao salvar configurações');
+    } finally {
+      setSavingClinic(false);
+    }
+  };
+
+  const toggleWorkingDay = (day: string) => {
+    setWorkingDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day]
+    );
   };
 
   const handleConnectGoogle = async () => {
@@ -261,11 +365,19 @@ export default function Settings() {
           </p>
         </div>
 
-        <Tabs defaultValue="integrations" className="space-y-6">
-          <TabsList className="bg-muted/50">
+        <Tabs defaultValue="clinic" className="space-y-6">
+          <TabsList className="bg-muted/50 flex-wrap h-auto p-1">
+            <TabsTrigger value="clinic" className="gap-2">
+              <Building2 className="w-4 h-4" />
+              Clínica
+            </TabsTrigger>
             <TabsTrigger value="integrations" className="gap-2">
               <Zap className="w-4 h-4" />
               Integrações
+            </TabsTrigger>
+            <TabsTrigger value="agent" className="gap-2">
+              <Bot className="w-4 h-4" />
+              Agente IA
             </TabsTrigger>
             <TabsTrigger value="rules" className="gap-2">
               <SettingsIcon className="w-4 h-4" />
@@ -276,6 +388,216 @@ export default function Settings() {
               Mensagens
             </TabsTrigger>
           </TabsList>
+
+          {/* Clinic Config Tab */}
+          <TabsContent value="clinic" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  Informações da Clínica
+                </CardTitle>
+                <CardDescription>
+                  Configure os dados da sua clínica para o agente de IA
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="clinicName">Nome da Clínica</Label>
+                    <Input
+                      id="clinicName"
+                      placeholder="Ex: Clínica Saúde Total"
+                      value={clinicName}
+                      onChange={(e) => setClinicName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="clinicPhone">Telefone</Label>
+                    <Input
+                      id="clinicPhone"
+                      placeholder="(11) 99999-0000"
+                      value={clinicPhone}
+                      onChange={(e) => setClinicPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clinicAddress">Endereço Completo</Label>
+                  <Input
+                    id="clinicAddress"
+                    placeholder="Rua das Flores, 123 - Centro, São Paulo - SP"
+                    value={clinicAddress}
+                    onChange={(e) => setClinicAddress(e.target.value)}
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Horário de Funcionamento
+                  </h4>
+                  
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Horário de Abertura</Label>
+                      <Input
+                        type="time"
+                        value={businessHoursStart}
+                        onChange={(e) => setBusinessHoursStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Horário de Fechamento</Label>
+                      <Input
+                        type="time"
+                        value={businessHoursEnd}
+                        onChange={(e) => setBusinessHoursEnd(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Duração da Consulta (min)</Label>
+                      <Input
+                        type="number"
+                        min={15}
+                        max={120}
+                        step={15}
+                        value={appointmentDuration}
+                        onChange={(e) => setAppointmentDuration(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Dias de Funcionamento</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: 'monday', label: 'Seg' },
+                        { id: 'tuesday', label: 'Ter' },
+                        { id: 'wednesday', label: 'Qua' },
+                        { id: 'thursday', label: 'Qui' },
+                        { id: 'friday', label: 'Sex' },
+                        { id: 'saturday', label: 'Sáb' },
+                        { id: 'sunday', label: 'Dom' },
+                      ].map((day) => (
+                        <Button
+                          key={day.id}
+                          type="button"
+                          variant={workingDays.includes(day.id) ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleWorkingDay(day.id)}
+                        >
+                          {day.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveClinicSettings} disabled={savingClinic}>
+                  {savingClinic ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Informações'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Agent Config Tab */}
+          <TabsContent value="agent" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5" />
+                  Configurações do Agente de IA
+                </CardTitle>
+                <CardDescription>
+                  Configure como o agente irá interagir com seus pacientes via WhatsApp
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="agentGreeting">Mensagem de Boas-Vindas</Label>
+                  <Textarea
+                    id="agentGreeting"
+                    value={agentGreeting}
+                    onChange={(e) => setAgentGreeting(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                    placeholder="Olá! Bem-vindo à nossa clínica..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Esta mensagem será usada para iniciar conversas com novos pacientes
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Key className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Usar OpenAI Personalizada</p>
+                        <p className="text-sm text-muted-foreground">
+                          Use sua própria chave da OpenAI em vez da IA padrão
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={useCustomOpenai}
+                      onCheckedChange={setUseCustomOpenai}
+                    />
+                  </div>
+
+                  {useCustomOpenai && (
+                    <div className="space-y-2 p-4 border rounded-lg">
+                      <Label htmlFor="openaiKey">Chave da API OpenAI</Label>
+                      <Input
+                        id="openaiKey"
+                        type="password"
+                        placeholder="sk-..."
+                        value={openaiApiKey}
+                        onChange={(e) => setOpenaiApiKey(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Sua chave será armazenada de forma segura e usada apenas para o agente
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">Webhook para Evolution API</h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Configure este webhook na sua Evolution API para receber mensagens:
+                  </p>
+                  <code className="block p-2 bg-muted rounded text-xs break-all">
+                    {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`}
+                  </code>
+                </div>
+
+                <Button onClick={handleSaveClinicSettings} disabled={savingClinic}>
+                  {savingClinic ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Configurações'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Integrations Tab */}
           <TabsContent value="integrations" className="space-y-6">
