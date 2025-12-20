@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Generate OAuth URL
+    // Generate OAuth URL or handle actions
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -108,9 +108,21 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    
+    // Create a client with the user's token to validate it
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
+    const userSupabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    })
+    
+    const { data: { user }, error: userError } = await userSupabase.auth.getUser()
 
     if (userError || !user) {
+      console.error('Auth error:', userError)
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
