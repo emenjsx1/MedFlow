@@ -33,30 +33,35 @@ Deno.serve(async (req) => {
       })
     }
 
-    const message = data?.message
-    if (!message || message.key?.fromMe) {
+    // data is already the message object in Evolution API format
+    const messageData = data
+    
+    // Check if it's an incoming message (not from me)
+    if (!messageData || messageData.key?.fromMe === true) {
+      console.log('Ignoring: fromMe or no data')
       return new Response(JSON.stringify({ ok: true, ignored: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Extract message content
-    const messageText = message.message?.conversation || 
-                        message.message?.extendedTextMessage?.text ||
+    // Extract message content - Evolution API structure
+    const messageText = messageData.message?.conversation || 
+                        messageData.message?.extendedTextMessage?.text ||
                         ''
     
     if (!messageText) {
+      console.log('Ignoring: no text content')
       return new Response(JSON.stringify({ ok: true, ignored: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
     // Get phone number (remove @s.whatsapp.net)
-    const remoteJid = message.key?.remoteJid || ''
+    const remoteJid = messageData.key?.remoteJid || ''
     const patientPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '')
     
     // Get patient name from push name
-    const patientName = message.pushName || ''
+    const patientName = messageData.pushName || ''
 
     console.log('Processing message from:', patientPhone, 'Name:', patientName, 'Text:', messageText)
 
