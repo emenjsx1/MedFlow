@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
 
     // Get available slots from appointments (simplified - in production would check Google Calendar)
     const today = new Date()
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const nextWeek = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
     
     const { data: existingAppointments } = await supabase
       .from('appointments')
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       existingAppointments?.map(a => a.scheduled_at) || []
     )
 
-    // Build system prompt
+    // Build system prompt with improved instructions
     const systemPrompt = `Você é um assistente virtual de agendamento para a clínica "${tenantSettings.clinic_name || 'Nossa Clínica'}".
 
 INFORMAÇÕES DA CLÍNICA:
@@ -87,24 +87,43 @@ INFORMAÇÕES DA CLÍNICA:
 - Dias de funcionamento: ${(tenantSettings.working_days || []).join(', ')}
 - Duração das consultas: ${tenantSettings.appointment_duration_minutes || 30} minutos
 
-HORÁRIOS DISPONÍVEIS PARA OS PRÓXIMOS 7 DIAS:
-${availableSlots.slice(0, 10).map(s => `- ${s.formatted}`).join('\n')}
-${availableSlots.length > 10 ? `\n... e mais ${availableSlots.length - 10} horários disponíveis.` : ''}
+HORÁRIOS DISPONÍVEIS PARA OS PRÓXIMOS 14 DIAS:
+${availableSlots.slice(0, 15).map(s => `- ${s.formatted}`).join('\n')}
+${availableSlots.length > 15 ? `\n... e mais ${availableSlots.length - 15} horários disponíveis.` : ''}
 
-SUAS INSTRUÇÕES:
+SUAS INSTRUÇÕES (SIGA RIGOROSAMENTE):
 1. Seja cordial e profissional
-2. Colete o nome do paciente se ainda não souber
-3. Sugira horários disponíveis (não pergunte qual horário, ofereça opções)
-4. Quando o paciente confirmar um horário, responda com EXATAMENTE este formato:
-   [AGENDAR: YYYY-MM-DD HH:MM | NOME: Nome do Paciente]
-   Seguido de uma mensagem de confirmação amigável
-5. Se o paciente quiser cancelar, responda com:
-   [CANCELAR: ID_DA_CONSULTA]
-6. Sempre confirme os dados antes de agendar
+2. Se não souber o nome do paciente, pergunte o nome COMPLETO primeiro
+3. Quando tiver o nome, sugira 3-5 horários disponíveis (não pergunte qual horário, ofereça opções diretas)
+4. Quando o paciente escolher um horário ou confirmar com "sim", "ok", "pode ser", etc:
+   - MARQUE IMEDIATAMENTE o agendamento usando o comando:
+     [AGENDAR: YYYY-MM-DD HH:MM | NOME: Nome Completo do Paciente]
+   - CONFIRME que a consulta foi agendada com data, hora e local
+   - PERGUNTE se o paciente tem alguma dúvida ou se precisa de mais alguma coisa
+5. NUNCA peça confirmação duas vezes - quando o paciente diz "sim" ou escolhe um horário, AGENDE!
+6. Após agendar, sempre finalize perguntando: "Sua consulta está confirmada! Posso ajudar em mais alguma coisa?"
 
 INFORMAÇÕES DO PACIENTE ATUAL:
 - Telefone: ${patientPhone}
-- Nome: ${patientName || 'Não informado'}
+- Nome: ${patientName || 'Ainda não informado'}
+
+EXEMPLO DE FLUXO CORRETO:
+Paciente: "Quero marcar consulta"
+Você: "Olá! Para agendar sua consulta, qual é seu nome completo?"
+Paciente: "João Silva"
+Você: "Prazer, João Silva! Temos estes horários disponíveis:
+- Segunda, 23/12 às 09:00
+- Segunda, 23/12 às 10:00
+- Terça, 24/12 às 08:30
+Qual prefere?"
+Paciente: "Pode ser dia 23 às 09"
+Você: "[AGENDAR: 2024-12-23 09:00 | NOME: João Silva]
+Perfeito, João! ✅ Sua consulta foi agendada:
+📅 Data: Segunda-feira, 23/12/2024
+⏰ Horário: 09:00
+📍 Local: ${tenantSettings.clinic_address || 'Endereço da clínica'}
+
+Posso ajudar em mais alguma coisa?"
 
 Responda de forma natural e amigável em português brasileiro.`
 
@@ -142,7 +161,7 @@ Responda de forma natural e amigável em português brasileiro.`
         model: tenantSettings.use_custom_openai ? 'gpt-4o-mini' : 'google/gemini-2.5-flash',
         messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 600,
       }),
     })
 
@@ -176,6 +195,8 @@ Responda de forma natural e amigável em português brasileiro.`
       const [, date, time, name] = bookingMatch
       const scheduledAt = `${date}T${time}:00`
       
+      console.log('Creating appointment:', { date, time, name: name.trim(), scheduledAt })
+      
       // Find or create patient
       let patientId: string | null = null
       
@@ -188,6 +209,11 @@ Responda de forma natural e amigável em português brasileiro.`
       
       if (existingPatient) {
         patientId = existingPatient.id
+        // Update patient name if we have a better one
+        await supabase
+          .from('patients')
+          .update({ name: name.trim() })
+          .eq('id', patientId)
       } else {
         const { data: newPatient, error: patientError } = await supabase
           .from('patients')
@@ -201,6 +227,9 @@ Responda de forma natural e amigável em português brasileiro.`
         
         if (!patientError && newPatient) {
           patientId = newPatient.id
+          console.log('New patient created:', patientId)
+        } else {
+          console.error('Patient creation error:', patientError)
         }
       }
 
@@ -221,9 +250,9 @@ Responda de forma natural e amigável em português brasileiro.`
 
       if (!appointmentError && appointment) {
         appointmentCreated = appointment
-        console.log('Appointment created:', appointment)
+        console.log('Appointment created successfully:', appointment.id)
       } else {
-        console.error('Appointment error:', appointmentError)
+        console.error('Appointment creation error:', appointmentError)
       }
     }
 
@@ -252,6 +281,7 @@ Responda de forma natural e amigável em português brasileiro.`
       patient_id: patient?.id,
       body: cleanReply,
       direction: 'outbound',
+      appointment_id: appointmentCreated?.id,
     })
 
     // Send reply via WhatsApp (Evolution API)
