@@ -58,25 +58,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = async (userId: string) => {
     try {
-      // Fetch role
-      const { data: roleData } = await supabase
+      // Fetch role using maybeSingle to avoid errors when no data exists
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       
-      if (roleData) {
+      if (!roleError && roleData) {
         setRole(roleData.role as UserRole);
       }
 
       // Fetch tenant_id from profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('tenant_id')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
-      if (profileData) {
+      if (!profileError && profileData) {
         setTenantId(profileData.tenant_id);
       }
     } catch (error) {
