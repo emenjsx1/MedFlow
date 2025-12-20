@@ -127,9 +127,20 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     
     const body = await req.json()
-    const { tenantId, patientPhone, patientName, message, conversationHistory = [] } = body
+    const {
+      tenantId,
+      patientPhone: rawPatientPhone,
+      patientName: rawPatientName,
+      messageId,
+      remoteJid,
+      message,
+      conversationHistory = [],
+    } = body
 
-    console.log('Agent request:', { tenantId, patientPhone, message })
+    const patientPhone = normalizePhone(rawPatientPhone)
+    const patientName = typeof rawPatientName === 'string' ? rawPatientName.trim() : ''
+
+    console.log('Agent request:', { tenantId, patientPhone, message, messageId, remoteJid })
 
     // Get tenant settings
     const { data: settings, error: settingsError } = await supabase
@@ -148,10 +159,49 @@ Deno.serve(async (req) => {
 
     const tenantSettings = settings as TenantSettings
 
+    // Find or create patient early so messages list can show a name
+    let patientId: string | null = null
+    const placeholderName = 'Sem nome'
+
+    const { data: existingPatient } = await supabase
+      .from('patients')
+      .select('id, name')
+      .eq('tenant_id', tenantId)
+      .eq('whatsapp', patientPhone)
+      .maybeSingle()
+
+    if (existingPatient?.id) {
+      patientId = existingPatient.id
+
+      // If we got a pushName and the stored name is missing/placeholder, update it
+      if (patientName && (!existingPatient.name || existingPatient.name === placeholderName)) {
+        await supabase
+          .from('patients')
+          .update({ name: patientName })
+          .eq('id', patientId)
+      }
+    } else if (patientName) {
+      const { data: newPatient, error: patientError } = await supabase
+        .from('patients')
+        .insert({
+          tenant_id: tenantId,
+          name: patientName || placeholderName,
+          whatsapp: patientPhone,
+        })
+        .select('id')
+        .single()
+
+      if (!patientError && newPatient) {
+        patientId = newPatient.id
+      } else {
+        console.error('Patient creation error:', patientError)
+      }
+    }
+
     // Get available slots from appointments (simplified - in production would check Google Calendar)
     const today = new Date()
     const nextWeek = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
-    
+
     const { data: existingAppointments } = await supabase
       .from('appointments')
       .select('scheduled_at')
@@ -292,23 +342,22 @@ Responda de forma natural e amigável em português brasileiro.`
       
       console.log('Creating appointment:', { date, time, name: name.trim(), scheduledAt })
       
-      // Find or create patient
-      let patientId: string | null = null
-      
-      const { data: existingPatient } = await supabase
+      // Find or create patient (reuse existing if possible)
+      let bookingPatientId: string | null = patientId
+
+      const { data: patientRow } = await supabase
         .from('patients')
         .select('id')
         .eq('tenant_id', tenantId)
         .eq('whatsapp', patientPhone)
         .maybeSingle()
-      
-      if (existingPatient) {
-        patientId = existingPatient.id
-        // Update patient name if we have a better one
+
+      if (patientRow?.id) {
+        bookingPatientId = patientRow.id
         await supabase
           .from('patients')
           .update({ name: name.trim() })
-          .eq('id', patientId)
+          .eq('id', bookingPatientId)
       } else {
         const { data: newPatient, error: patientError } = await supabase
           .from('patients')
@@ -319,14 +368,17 @@ Responda de forma natural e amigável em português brasileiro.`
           })
           .select('id')
           .single()
-        
+
         if (!patientError && newPatient) {
-          patientId = newPatient.id
-          console.log('New patient created:', patientId)
+          bookingPatientId = newPatient.id
+          console.log('New patient created:', bookingPatientId)
         } else {
           console.error('Patient creation error:', patientError)
         }
       }
+
+      // keep patientId updated for message linking
+      patientId = bookingPatientId
 
       // Create Google Calendar event if connected
       if (tenantSettings.google_calendar_connected && 
@@ -420,18 +472,10 @@ Responda de forma natural e amigável em português brasileiro.`
     // Remove the booking command from the reply sent to user
     const cleanReply = reply.replace(/\[AGENDAR:[^\]]+\]/g, '').trim()
 
-    // Save message to database
-    const { data: patient } = await supabase
-      .from('patients')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('whatsapp', patientPhone)
-      .maybeSingle()
-
     // Save incoming message
     await supabase.from('messages').insert({
       tenant_id: tenantId,
-      patient_id: patient?.id,
+      patient_id: patientId,
       body: message,
       direction: 'inbound',
     })
@@ -439,7 +483,7 @@ Responda de forma natural e amigável em português brasileiro.`
     // Save outgoing message
     await supabase.from('messages').insert({
       tenant_id: tenantId,
-      patient_id: patient?.id,
+      patient_id: patientId,
       body: cleanReply,
       direction: 'outbound',
       appointment_id: appointmentCreated?.id,
@@ -485,6 +529,12 @@ Responda de forma natural e amigável em português brasileiro.`
     )
   }
 })
+
+function normalizePhone(input: unknown): string {
+  const str = typeof input === 'string' ? input : ''
+  // Keep only digits (handles "+258...", spaces, etc.)
+  return str.replace(/\D/g, '')
+}
 
 function generateAvailableSlots(
   startTime: string,
