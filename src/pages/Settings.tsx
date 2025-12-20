@@ -34,6 +34,9 @@ import {
   Phone,
   Bot,
   Key,
+  Plus,
+  Trash2,
+  HelpCircle,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -85,6 +88,9 @@ export default function Settings() {
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [agentGreeting, setAgentGreeting] = useState('Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
   const [agentBusinessContext, setAgentBusinessContext] = useState('');
+  const [agentFaqs, setAgentFaqs] = useState<{ question: string; answer: string }[]>([]);
+  const [newFaqQuestion, setNewFaqQuestion] = useState('');
+  const [newFaqAnswer, setNewFaqAnswer] = useState('');
   const [savingClinic, setSavingClinic] = useState(false);
 
   // Handle OAuth callback from URL params
@@ -142,6 +148,7 @@ export default function Settings() {
         setOpenaiApiKey(settings.openai_api_key || '');
         setAgentGreeting(settings.agent_greeting_message || 'Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
         setAgentBusinessContext((settings as any).agent_business_context || '');
+        setAgentFaqs((settings as any).agent_faqs || []);
       }
     } catch (error) {
       console.error('Error loading clinic settings:', error);
@@ -222,6 +229,7 @@ export default function Settings() {
           openai_api_key: useCustomOpenai ? openaiApiKey : null,
           agent_greeting_message: agentGreeting,
           agent_business_context: agentBusinessContext,
+          agent_faqs: agentFaqs,
         } as any, { onConflict: 'tenant_id' });
 
       if (error) throw error;
@@ -710,6 +718,78 @@ Exemplo:
                     </div>
                   )}
                 </div>
+
+                <Separator />
+
+                {/* FAQs Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <Label className="text-base font-medium">Perguntas Frequentes (FAQ)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Adicione perguntas e respostas que o agente deve usar para responder automaticamente
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Existing FAQs */}
+                  {agentFaqs.length > 0 && (
+                    <div className="space-y-3">
+                      {agentFaqs.map((faq, index) => (
+                        <div key={index} className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 space-y-1">
+                              <p className="font-medium text-sm">P: {faq.question}</p>
+                              <p className="text-sm text-muted-foreground">R: {faq.answer}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setAgentFaqs(prev => prev.filter((_, i) => i !== index))}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add new FAQ */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Input
+                      placeholder="Digite a pergunta... Ex: Qual o valor da consulta?"
+                      value={newFaqQuestion}
+                      onChange={(e) => setNewFaqQuestion(e.target.value)}
+                    />
+                    <Textarea
+                      placeholder="Digite a resposta... Ex: O valor da consulta é R$ 200,00"
+                      value={newFaqAnswer}
+                      onChange={(e) => setNewFaqAnswer(e.target.value)}
+                      rows={2}
+                      className="resize-none"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (newFaqQuestion.trim() && newFaqAnswer.trim()) {
+                          setAgentFaqs(prev => [...prev, { question: newFaqQuestion.trim(), answer: newFaqAnswer.trim() }]);
+                          setNewFaqQuestion('');
+                          setNewFaqAnswer('');
+                        }
+                      }}
+                      disabled={!newFaqQuestion.trim() || !newFaqAnswer.trim()}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar FAQ
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
 
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
                   <h4 className="font-medium text-primary mb-2">Webhook para Evolution API</h4>

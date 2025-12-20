@@ -16,6 +16,7 @@ interface TenantSettings {
   agent_greeting_message: string | null
   agent_booking_confirmation: string | null
   agent_business_context: string | null
+  agent_faqs: { question: string; answer: string }[] | null
   use_custom_openai: boolean | null
   openai_api_key: string | null
   google_calendar_connected: boolean | null
@@ -228,6 +229,11 @@ Deno.serve(async (req) => {
       ? `\n\nSOBRE O NEGÓCIO (use essas informações para responder perguntas sobre serviços, preços, etc.):\n${tenantSettings.agent_business_context}\n`
       : ''
 
+    // Build custom FAQs section
+    const customFaqs = tenantSettings.agent_faqs && tenantSettings.agent_faqs.length > 0
+      ? tenantSettings.agent_faqs.map(faq => `- "${faq.question}" → "${faq.answer}"`).join('\n')
+      : ''
+
     // Build system prompt with improved instructions
     const systemPrompt = `Você é um assistente virtual de agendamento para a clínica "${tenantSettings.clinic_name || 'Nossa Clínica'}".
 
@@ -248,7 +254,7 @@ ${availableSlots.length > 15 ? `\n... e mais ${availableSlots.length - 15} horá
 
 SUAS INSTRUÇÕES (SIGA RIGOROSAMENTE):
 1. Seja cordial e profissional
-2. Se o paciente perguntar sobre serviços, preços ou informações do negócio, use as informações em "SOBRE O NEGÓCIO"
+2. Se o paciente perguntar sobre serviços, preços ou informações do negócio, use as informações em "SOBRE O NEGÓCIO" e nas "PERGUNTAS FREQUENTES CONFIGURADAS"
 3. Se não souber o nome do paciente, pergunte o nome COMPLETO primeiro
 4. Quando tiver o nome, sugira 3-5 horários disponíveis
 5. Quando o paciente escolher um horário:
@@ -270,7 +276,7 @@ PERGUNTAS FREQUENTES (responda diretamente):
 - "Qual o telefone de contato/suporte?" → "${tenantSettings.clinic_phone || 'Telefone da clínica'}"
 - "Quero falar com suporte/atendente humano" → "Nosso suporte está disponível pelo telefone ${tenantSettings.clinic_phone || 'da clínica'}. Você pode ligar ou enviar mensagem diretamente!"
 - "Vocês atendem sábado/domingo/feriado?" → Verifique os dias: ${(tenantSettings.working_days || []).join(', ')}
-
+${customFaqs ? `\nPERGUNTAS FREQUENTES CONFIGURADAS PELA CLÍNICA (use estas respostas quando o paciente perguntar algo similar):\n${customFaqs}\n` : ''}
 INFORMAÇÕES DO PACIENTE ATUAL:
 - Telefone: ${patientPhone}
 - Nome: ${patientName || 'Ainda não informado'}
