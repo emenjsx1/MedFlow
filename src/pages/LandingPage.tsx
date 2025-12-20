@@ -1,8 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Calendar, MessageSquare, Bell, Clock, Users, Building2, Stethoscope, Sparkles } from "lucide-react";
+import { Check, Calendar, MessageSquare, Bell, Clock, Users, Building2, Stethoscope, Sparkles, Play, Headphones } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const allFeatures = [
+  "Agendamentos ilimitados",
+  "WhatsApp integrado",
+  "Lembretes automáticos (1h e 10min antes)",
+  "Suporte 24/7 automatizado via IA",
+  "Fila de espera inteligente",
+  "Relatórios e métricas",
+  "Gestão de pacientes",
+  "Integrações com Google Calendar"
+];
 
 const plans = [
   {
@@ -10,13 +21,8 @@ const plans = [
     name: "Mensal",
     price: 47,
     interval: "mês",
-    description: "Perfeito para começar",
-    features: [
-      "Agendamentos ilimitados",
-      "WhatsApp integrado",
-      "Lembretes automáticos",
-      "Suporte por email"
-    ]
+    description: "Pagamento mensal",
+    features: allFeatures
   },
   {
     id: "quarterly",
@@ -25,13 +31,8 @@ const plans = [
     interval: "trimestre",
     savings: "Economize 10%",
     popular: true,
-    description: "Mais economia",
-    features: [
-      "Tudo do plano mensal",
-      "Relatórios avançados",
-      "Suporte prioritário",
-      "Fila de espera inteligente"
-    ]
+    description: "3 meses de acesso",
+    features: allFeatures
   },
   {
     id: "annual",
@@ -39,17 +40,17 @@ const plans = [
     price: 470,
     interval: "ano",
     savings: "Economize 17%",
-    description: "Melhor custo-benefício",
-    features: [
-      "Tudo do plano trimestral",
-      "Onboarding personalizado",
-      "Suporte 24/7",
-      "Integrações premium"
-    ]
+    description: "12 meses de acesso",
+    features: allFeatures
   }
 ];
 
 const features = [
+  {
+    icon: Headphones,
+    title: "Suporte 24/7 Automatizado",
+    description: "IA atende seus pacientes a qualquer hora, respondendo dúvidas sobre serviços, preços e horários"
+  },
   {
     icon: Calendar,
     title: "Agendamento Inteligente",
@@ -71,14 +72,9 @@ const features = [
     description: "Preencha horários vagos automaticamente com pacientes da lista de espera"
   },
   {
-    icon: Users,
-    title: "Gestão de Pacientes",
-    description: "Cadastro completo de pacientes com histórico de consultas"
-  },
-  {
     icon: Sparkles,
     title: "IA Assistente",
-    description: "Agente de IA que agenda consultas automaticamente via WhatsApp"
+    description: "Agente de IA que agenda consultas e informa sobre serviços automaticamente"
   }
 ];
 
@@ -127,36 +123,62 @@ export default function LandingPage() {
       <section className="py-20 md:py-32">
         <div className="container mx-auto px-4 text-center">
           <Badge variant="secondary" className="mb-6">
-            🚀 Automatize seu consultório
+            🚀 Atendimento 24h automatizado
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 max-w-4xl mx-auto">
-            Agendamento inteligente com{" "}
-            <span className="text-primary">IA e WhatsApp</span>
+            Agendamento + Suporte 24/7 com{" "}
+            <span className="text-primary">IA no WhatsApp</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Reduza faltas em até 70% com lembretes automáticos, fila de espera inteligente 
-            e um agente de IA que agenda consultas pelo WhatsApp.
+            Reduza faltas em até 70% e atenda seus pacientes 24 horas por dia. 
+            Nossa IA agenda consultas, responde dúvidas e informa sobre seus serviços automaticamente.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button size="lg" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
               Ver Planos
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/login")}>
-              Começar Grátis
+            <Button size="lg" variant="outline" onClick={() => document.getElementById('vsl')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Play className="w-4 h-4 mr-2" />
+              Ver Como Funciona
             </Button>
           </div>
         </div>
       </section>
 
+      {/* VSL Section */}
+      <section id="vsl" className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Veja o AgendaAI em ação
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Descubra como nossa IA pode transformar o atendimento da sua clínica
+            </p>
+          </div>
+          <div className="max-w-4xl mx-auto">
+            <div className="aspect-video bg-muted rounded-xl flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Play className="w-10 h-10 text-primary" />
+                </div>
+                <p className="text-muted-foreground">Vídeo de demonstração</p>
+                <p className="text-sm text-muted-foreground/60">Adicione seu vídeo aqui</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Tudo que você precisa para sua clínica
+              Atendimento 24/7 + Agendamento Inteligente
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Funcionalidades completas para automatizar seu consultório e melhorar a experiência dos pacientes
+              Configure informações da sua clínica uma vez e deixe a IA atender seus pacientes a qualquer hora
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -178,7 +200,7 @@ export default function LandingPage() {
       </section>
 
       {/* Target Audience Section */}
-      <section className="py-20">
+      <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -203,7 +225,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-muted/30">
+      <section id="pricing" className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -261,16 +283,16 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
+      <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Pronto para transformar sua clínica?
+            Pronto para atender 24 horas por dia?
           </h2>
           <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-            Junte-se a centenas de profissionais que já automatizaram seus agendamentos
+            Configure sua clínica uma vez e deixe a IA trabalhar para você
           </p>
-          <Button size="lg" onClick={() => navigate("/login")}>
-            Criar Minha Conta Grátis
+          <Button size="lg" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+            Escolher Meu Plano
           </Button>
         </div>
       </section>
