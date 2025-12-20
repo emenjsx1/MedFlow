@@ -219,7 +219,15 @@ export type Database = {
       }
       tenant_settings: {
         Row: {
+          agent_booking_confirmation: string | null
+          agent_greeting_message: string | null
+          appointment_duration_minutes: number | null
+          business_hours_end: string | null
+          business_hours_start: string | null
           cancellation_template: string | null
+          clinic_address: string | null
+          clinic_name: string | null
+          clinic_phone: string | null
           confirm_hours_before: number | null
           confirmation_template: string | null
           created_at: string | null
@@ -228,17 +236,28 @@ export type Database = {
           id: string
           max_attempts: number | null
           min_hours_for_replacement: number | null
+          openai_api_key: string | null
           reconfirm_hours_before: number | null
           reconfirmation_template: string | null
           response_window_hours: number | null
           tenant_id: string
           updated_at: string | null
+          use_custom_openai: boolean | null
           waitlist_offer_template: string | null
           whatsapp_connected: boolean | null
           whatsapp_session_id: string | null
+          working_days: string[] | null
         }
         Insert: {
+          agent_booking_confirmation?: string | null
+          agent_greeting_message?: string | null
+          appointment_duration_minutes?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
           cancellation_template?: string | null
+          clinic_address?: string | null
+          clinic_name?: string | null
+          clinic_phone?: string | null
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
@@ -247,17 +266,28 @@ export type Database = {
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
+          openai_api_key?: string | null
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
           tenant_id: string
           updated_at?: string | null
+          use_custom_openai?: boolean | null
           waitlist_offer_template?: string | null
           whatsapp_connected?: boolean | null
           whatsapp_session_id?: string | null
+          working_days?: string[] | null
         }
         Update: {
+          agent_booking_confirmation?: string | null
+          agent_greeting_message?: string | null
+          appointment_duration_minutes?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
           cancellation_template?: string | null
+          clinic_address?: string | null
+          clinic_name?: string | null
+          clinic_phone?: string | null
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
@@ -266,14 +296,17 @@ export type Database = {
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
+          openai_api_key?: string | null
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
           tenant_id?: string
           updated_at?: string | null
+          use_custom_openai?: boolean | null
           waitlist_offer_template?: string | null
           whatsapp_connected?: boolean | null
           whatsapp_session_id?: string | null
+          working_days?: string[] | null
         }
         Relationships: [
           {

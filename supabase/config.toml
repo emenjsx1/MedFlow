@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.google-calendar-auth]
 verify_jwt = false
+
+[functions.booking-agent]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false

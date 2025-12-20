@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -9,95 +8,26 @@ import {
   MessageSquare,
   Send,
   CheckCheck,
-  Clock,
   AlertCircle,
   ArrowDownLeft,
   ArrowUpRight,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
-  patientName: string;
-  patientPhone: string;
+  patient_id: string | null;
   direction: 'inbound' | 'outbound';
   body: string;
   status: 'sent' | 'delivered' | 'read' | 'failed';
-  timestamp: string;
-  appointmentDate?: string;
+  sent_at: string;
+  patient?: { name: string; whatsapp: string } | null;
 }
-
-const mockMessages: Message[] = [
-  {
-    id: '1',
-    patientName: 'Maria Silva',
-    patientPhone: '(11) 99999-1234',
-    direction: 'outbound',
-    body: 'Olá Maria! Confirmando sua consulta para amanhã às 09:00. Responda: 1-Confirmar, 2-Cancelar, 3-Reagendar',
-    status: 'read',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    appointmentDate: '2024-12-20',
-  },
-  {
-    id: '2',
-    patientName: 'Maria Silva',
-    patientPhone: '(11) 99999-1234',
-    direction: 'inbound',
-    body: '1',
-    status: 'read',
-    timestamp: new Date(Date.now() - 3000000).toISOString(),
-  },
-  {
-    id: '3',
-    patientName: 'João Santos',
-    patientPhone: '(11) 98888-5678',
-    direction: 'outbound',
-    body: 'Olá João! Confirmando sua consulta para amanhã às 10:30. Responda: 1-Confirmar, 2-Cancelar, 3-Reagendar',
-    status: 'delivered',
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    appointmentDate: '2024-12-20',
-  },
-  {
-    id: '4',
-    patientName: 'Ana Costa',
-    patientPhone: '(11) 97777-9012',
-    direction: 'outbound',
-    body: 'Olá Ana! Confirmando sua consulta para amanhã às 11:00. Responda: 1-Confirmar, 2-Cancelar, 3-Reagendar',
-    status: 'sent',
-    timestamp: new Date(Date.now() - 10800000).toISOString(),
-    appointmentDate: '2024-12-20',
-  },
-  {
-    id: '5',
-    patientName: 'Pedro Ferreira',
-    patientPhone: '(11) 96666-3456',
-    direction: 'outbound',
-    body: 'Olá Pedro! Confirmando sua consulta para amanhã às 14:00. Responda: 1-Confirmar, 2-Cancelar, 3-Reagendar',
-    status: 'read',
-    timestamp: new Date(Date.now() - 14400000).toISOString(),
-    appointmentDate: '2024-12-20',
-  },
-  {
-    id: '6',
-    patientName: 'Pedro Ferreira',
-    patientPhone: '(11) 96666-3456',
-    direction: 'inbound',
-    body: '2',
-    status: 'read',
-    timestamp: new Date(Date.now() - 13800000).toISOString(),
-  },
-  {
-    id: '7',
-    patientName: 'Luciana Almeida',
-    patientPhone: '(11) 99999-1111',
-    direction: 'outbound',
-    body: 'Olá Luciana! Surgiu uma vaga para amanhã às 14:00. Deseja agendar? 1-Sim, 2-Não',
-    status: 'delivered',
-    timestamp: new Date(Date.now() - 12600000).toISOString(),
-  },
-];
 
 const statusConfig = {
   sent: { label: 'Enviado', icon: Send, className: 'text-muted-foreground' },
@@ -107,32 +37,54 @@ const statusConfig = {
 };
 
 export default function Messages() {
+  const { tenantId } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
-  // Group messages by patient for conversation view
-  const conversations = mockMessages.reduce((acc, msg) => {
-    const existing = acc.find((c) => c.patientPhone === msg.patientPhone);
+  useEffect(() => {
+    if (tenantId) {
+      loadMessages();
+    }
+  }, [tenantId]);
+
+  const loadMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`*, patient:patients(name, whatsapp)`)
+        .eq('tenant_id', tenantId)
+        .order('sent_at', { ascending: false })
+        .limit(200);
+
+      if (error) throw error;
+      setMessages(data || []);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Group messages by patient
+  const conversations = messages.reduce((acc, msg) => {
+    const patientKey = msg.patient_id || 'unknown';
+    const existing = acc.find((c) => c.patientId === patientKey);
     if (existing) {
       existing.messages.push(msg);
-      if (new Date(msg.timestamp) > new Date(existing.lastMessageAt)) {
-        existing.lastMessageAt = msg.timestamp;
-        existing.lastMessage = msg.body;
-      }
     } else {
       acc.push({
-        patientName: msg.patientName,
-        patientPhone: msg.patientPhone,
+        patientId: patientKey,
+        patientName: msg.patient?.name || 'Desconhecido',
+        patientPhone: msg.patient?.whatsapp || '',
         messages: [msg],
         lastMessage: msg.body,
-        lastMessageAt: msg.timestamp,
+        lastMessageAt: msg.sent_at,
       });
     }
     return acc;
-  }, [] as { patientName: string; patientPhone: string; messages: Message[]; lastMessage: string; lastMessageAt: string }[]);
-
-  // Sort by most recent
-  conversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+  }, [] as { patientId: string; patientName: string; patientPhone: string; messages: Message[]; lastMessage: string; lastMessageAt: string }[]);
 
   const filteredConversations = conversations.filter(
     (c) =>
@@ -140,25 +92,33 @@ export default function Messages() {
       c.patientPhone.includes(searchQuery)
   );
 
+  const selectedConversation = conversations.find(c => c.patientId === selectedPatientId);
+
   const stats = {
-    total: mockMessages.length,
-    sent: mockMessages.filter((m) => m.direction === 'outbound').length,
-    received: mockMessages.filter((m) => m.direction === 'inbound').length,
-    failed: mockMessages.filter((m) => m.status === 'failed').length,
+    total: messages.length,
+    sent: messages.filter((m) => m.direction === 'outbound').length,
+    received: messages.filter((m) => m.direction === 'inbound').length,
+    failed: messages.filter((m) => m.status === 'failed').length,
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">Mensagens</h1>
-          <p className="text-muted-foreground mt-1">
-            Histórico de mensagens enviadas e recebidas
-          </p>
+          <p className="text-muted-foreground mt-1">Histórico de mensagens enviadas e recebidas</p>
         </div>
 
-        {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
@@ -167,7 +127,7 @@ export default function Messages() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total hoje</p>
+                <p className="text-sm text-muted-foreground">Total</p>
               </div>
             </CardContent>
           </Card>
@@ -195,8 +155,8 @@ export default function Messages() {
           </Card>
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="w-12 h-12 rounded-xl bg-danger/10 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-danger" />
+              <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-destructive" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.failed}</p>
@@ -206,9 +166,7 @@ export default function Messages() {
           </Card>
         </div>
 
-        {/* Messages */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Conversation list */}
           <Card className="lg:col-span-1">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Conversas</CardTitle>
@@ -224,60 +182,60 @@ export default function Messages() {
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[500px]">
-                {filteredConversations.map((conv) => (
-                  <div
-                    key={conv.patientPhone}
-                    onClick={() => setSelectedMessage(conv.messages[0])}
-                    className={cn(
-                      'p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50',
-                      selectedMessage?.patientPhone === conv.patientPhone && 'bg-muted/50'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-medium text-primary">
-                          {conv.patientName.charAt(0)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium truncate">{conv.patientName}</p>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                {filteredConversations.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    Nenhuma conversa encontrada
+                  </div>
+                ) : (
+                  filteredConversations.map((conv) => (
+                    <div
+                      key={conv.patientId}
+                      onClick={() => setSelectedPatientId(conv.patientId)}
+                      className={cn(
+                        'p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50',
+                        selectedPatientId === conv.patientId && 'bg-muted/50'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-medium text-primary">
+                            {conv.patientName.charAt(0)}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conv.lastMessage}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium truncate">{conv.patientName}</p>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
 
-          {/* Message detail */}
           <Card className="lg:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">
-                {selectedMessage ? selectedMessage.patientName : 'Selecione uma conversa'}
+                {selectedConversation ? selectedConversation.patientName : 'Selecione uma conversa'}
               </CardTitle>
-              {selectedMessage && (
-                <CardDescription>{selectedMessage.patientPhone}</CardDescription>
+              {selectedConversation && (
+                <CardDescription>{selectedConversation.patientPhone}</CardDescription>
               )}
             </CardHeader>
             <CardContent>
-              {selectedMessage ? (
+              {selectedConversation ? (
                 <ScrollArea className="h-[500px] pr-4">
                   <div className="space-y-4">
-                    {conversations
-                      .find((c) => c.patientPhone === selectedMessage.patientPhone)
-                      ?.messages.sort(
-                        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-                      )
+                    {selectedConversation.messages
+                      .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
                       .map((msg) => {
-                        const StatusIcon = statusConfig[msg.status].icon;
+                        const StatusIcon = statusConfig[msg.status || 'sent'].icon;
                         const isOutbound = msg.direction === 'outbound';
 
                         return (
@@ -300,13 +258,9 @@ export default function Messages() {
                                   isOutbound ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                 )}
                               >
-                                <span>
-                                  {format(new Date(msg.timestamp), 'HH:mm', { locale: ptBR })}
-                                </span>
+                                <span>{format(new Date(msg.sent_at), 'HH:mm', { locale: ptBR })}</span>
                                 {isOutbound && (
-                                  <StatusIcon
-                                    className={cn('w-3 h-3', statusConfig[msg.status].className)}
-                                  />
+                                  <StatusIcon className={cn('w-3 h-3', statusConfig[msg.status || 'sent'].className)} />
                                 )}
                               </div>
                             </div>
