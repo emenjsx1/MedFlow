@@ -82,7 +82,7 @@ export default function LandingPage() {
       {/* Hero Section - Direct Response Style */}
       <section className="py-12 md:py-20">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight mb-8 max-w-5xl mx-auto leading-tight">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-8 max-w-4xl mx-auto leading-tight">
             🚨 VOCÊ JÁ SE IMAGINOU SUA AGENDA FUNCIONANDO SOZINHA?
           </h1>
           
