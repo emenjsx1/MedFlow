@@ -17,6 +17,97 @@ interface TenantSettings {
   agent_booking_confirmation: string | null
   use_custom_openai: boolean | null
   openai_api_key: string | null
+  google_calendar_connected: boolean | null
+  google_calendar_id: string | null
+  google_access_token: string | null
+  google_refresh_token: string | null
+  google_token_expires_at: string | null
+}
+
+async function refreshGoogleToken(
+  refreshToken: string,
+  clientId: string,
+  clientSecret: string
+): Promise<{ access_token: string; expires_in: number } | null> {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to refresh token:', await response.text())
+      return null
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error refreshing token:', error)
+    return null
+  }
+}
+
+async function createGoogleCalendarEvent(
+  accessToken: string,
+  calendarId: string,
+  event: {
+    summary: string
+    description: string
+    start: string
+    end: string
+    attendeePhone?: string
+  }
+): Promise<{ id: string } | null> {
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          summary: event.summary,
+          description: event.description,
+          start: {
+            dateTime: event.start,
+            timeZone: 'America/Sao_Paulo',
+          },
+          end: {
+            dateTime: event.end,
+            timeZone: 'America/Sao_Paulo',
+          },
+          reminders: {
+            useDefault: false,
+            overrides: [
+              { method: 'popup', minutes: 60 },
+              { method: 'popup', minutes: 15 },
+            ],
+          },
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Failed to create calendar event:', errorText)
+      return null
+    }
+
+    const data = await response.json()
+    console.log('Google Calendar event created:', data.id)
+    return { id: data.id }
+  } catch (error) {
+    console.error('Error creating calendar event:', error)
+    return null
+  }
 }
 
 Deno.serve(async (req) => {
@@ -30,6 +121,8 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')?.replace(/\/$/, '')
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
+    const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')
+    const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     
@@ -190,10 +283,12 @@ Responda de forma natural e amigável em português brasileiro.`
     // Check for booking command
     const bookingMatch = reply.match(/\[AGENDAR:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*\|\s*NOME:\s*([^\]]+)\]/)
     let appointmentCreated = null
+    let calendarEventId: string | null = null
 
     if (bookingMatch) {
       const [, date, time, name] = bookingMatch
       const scheduledAt = `${date}T${time}:00`
+      const durationMinutes = tenantSettings.appointment_duration_minutes || 30
       
       console.log('Creating appointment:', { date, time, name: name.trim(), scheduledAt })
       
@@ -233,6 +328,71 @@ Responda de forma natural e amigável em português brasileiro.`
         }
       }
 
+      // Create Google Calendar event if connected
+      if (tenantSettings.google_calendar_connected && 
+          tenantSettings.google_calendar_id && 
+          tenantSettings.google_access_token &&
+          GOOGLE_CLIENT_ID && 
+          GOOGLE_CLIENT_SECRET) {
+        
+        let accessToken = tenantSettings.google_access_token
+        
+        // Check if token is expired and refresh if needed
+        if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
+          const expiresAt = new Date(tenantSettings.google_token_expires_at)
+          const now = new Date()
+          
+          if (now >= expiresAt) {
+            console.log('Access token expired, refreshing...')
+            const refreshed = await refreshGoogleToken(
+              tenantSettings.google_refresh_token,
+              GOOGLE_CLIENT_ID,
+              GOOGLE_CLIENT_SECRET
+            )
+            
+            if (refreshed) {
+              accessToken = refreshed.access_token
+              const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+              
+              // Update token in database
+              await supabase
+                .from('tenant_settings')
+                .update({
+                  google_access_token: accessToken,
+                  google_token_expires_at: newExpiresAt,
+                })
+                .eq('tenant_id', tenantId)
+              
+              console.log('Token refreshed successfully')
+            }
+          }
+        }
+        
+        // Calculate end time
+        const startDate = new Date(`${date}T${time}:00`)
+        const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+        const endTime = endDate.toTimeString().slice(0, 5)
+        
+        const calendarEvent = await createGoogleCalendarEvent(
+          accessToken,
+          tenantSettings.google_calendar_id,
+          {
+            summary: `Consulta: ${name.trim()}`,
+            description: `Paciente: ${name.trim()}\nTelefone: ${patientPhone}\n\nAgendado via WhatsApp`,
+            start: `${date}T${time}:00`,
+            end: `${date}T${endTime}:00`,
+            attendeePhone: patientPhone,
+          }
+        )
+        
+        if (calendarEvent) {
+          calendarEventId = calendarEvent.id
+          console.log('Calendar event created:', calendarEventId)
+        }
+      } else {
+        console.log('Google Calendar not connected or missing credentials')
+      }
+
       // Create appointment
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
@@ -243,7 +403,8 @@ Responda de forma natural e amigável em português brasileiro.`
           patient_phone: patientPhone,
           scheduled_at: scheduledAt,
           status: 'confirmed',
-          duration_minutes: tenantSettings.appointment_duration_minutes || 30,
+          duration_minutes: durationMinutes,
+          calendar_event_id: calendarEventId,
         })
         .select()
         .single()
@@ -310,6 +471,7 @@ Responda de forma natural e amigável em português brasileiro.`
       JSON.stringify({ 
         reply: cleanReply,
         appointmentCreated,
+        calendarEventId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

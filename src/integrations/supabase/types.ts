@@ -231,8 +231,11 @@ export type Database = {
           confirm_hours_before: number | null
           confirmation_template: string | null
           created_at: string | null
+          google_access_token: string | null
           google_calendar_connected: boolean | null
           google_calendar_id: string | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
           id: string
           max_attempts: number | null
           min_hours_for_replacement: number | null
@@ -261,8 +264,11 @@ export type Database = {
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
+          google_access_token?: string | null
           google_calendar_connected?: boolean | null
           google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
@@ -291,8 +297,11 @@ export type Database = {
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
+          google_access_token?: string | null
           google_calendar_connected?: boolean | null
           google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
