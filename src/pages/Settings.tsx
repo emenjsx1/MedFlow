@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Calendar,
   MessageSquare,
   Settings as SettingsIcon,
@@ -19,13 +26,24 @@ import {
   Zap,
   Clock,
   RefreshCw,
+  Loader2,
+  QrCode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Settings() {
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleCalendarName, setGoogleCalendarName] = useState('');
   const [whatsappConnected, setWhatsappConnected] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  
+  // QR Code modal
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrCode, setQrCode] = useState('');
+  const [qrLoading, setQrLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   // Rules state
   const [confirmHoursBefore, setConfirmHoursBefore] = useState(24);
@@ -42,22 +60,157 @@ export default function Settings() {
     'Olá {nome}, não recebemos sua confirmação. Sua consulta está marcada para {hora}. Confirma? 1-Sim, 2-Cancelar'
   );
 
-  const handleConnectGoogle = () => {
-    // In production, this would redirect to Google OAuth
-    toast.success('Redirecionando para autenticação do Google...');
-    setTimeout(() => {
-      setGoogleConnected(true);
-      toast.success('Google Agenda conectado com sucesso!');
-    }, 1500);
+  // Load initial status
+  useEffect(() => {
+    loadIntegrationStatus();
+  }, []);
+
+  const loadIntegrationStatus = async () => {
+    try {
+      // Check WhatsApp status
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const whatsappResponse = await supabase.functions.invoke('whatsapp-qrcode', {
+        body: { action: 'status' },
+      });
+
+      if (whatsappResponse.data?.connected) {
+        setWhatsappConnected(true);
+      }
+
+      // Check Google Calendar status
+      const googleResponse = await supabase.functions.invoke('google-calendar-auth', {
+        body: { action: 'status' },
+      });
+
+      if (googleResponse.data?.connected) {
+        setGoogleConnected(true);
+        setGoogleCalendarName(googleResponse.data.calendarId || 'Calendário Principal');
+      }
+    } catch (error) {
+      console.error('Error loading status:', error);
+    }
   };
 
-  const handleConnectWhatsapp = () => {
-    // In production, this would open a QR code modal
-    toast.success('Gerando QR Code para conexão...');
-    setTimeout(() => {
-      setWhatsappConnected(true);
-      toast.success('WhatsApp conectado com sucesso!');
-    }, 1500);
+  const handleConnectGoogle = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+        body: { action: 'getAuthUrl' },
+      });
+
+      if (error) throw error;
+
+      if (data?.authUrl) {
+        // Open OAuth popup
+        const popup = window.open(data.authUrl, 'google-auth', 'width=500,height=600');
+        
+        // Listen for message from popup
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data.success) {
+            setGoogleConnected(true);
+            setGoogleCalendarName(event.data.calendarName || 'Calendário Principal');
+            toast.success('Google Agenda conectado com sucesso!');
+          } else if (event.data.error) {
+            toast.error('Erro ao conectar: ' + event.data.error);
+          }
+          window.removeEventListener('message', handleMessage);
+        };
+
+        window.addEventListener('message', handleMessage);
+      }
+    } catch (error) {
+      console.error('Error connecting Google:', error);
+      toast.error('Erro ao conectar Google Agenda');
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    try {
+      await supabase.functions.invoke('google-calendar-auth', {
+        body: { action: 'disconnect' },
+      });
+      setGoogleConnected(false);
+      setGoogleCalendarName('');
+      toast.success('Google Agenda desconectado');
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      toast.error('Erro ao desconectar');
+    }
+  };
+
+  const handleConnectWhatsapp = async () => {
+    setQrModalOpen(true);
+    setQrLoading(true);
+    setQrCode('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('whatsapp-qrcode', {
+        body: { action: 'create' },
+      });
+
+      if (error) throw error;
+
+      if (data?.qrcode) {
+        setQrCode(data.qrcode);
+        // Start polling for connection status
+        startStatusPolling();
+      } else {
+        throw new Error(data?.error || 'Falha ao gerar QR Code');
+      }
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      toast.error('Erro ao gerar QR Code. Verifique as configurações da Evolution API.');
+      setQrModalOpen(false);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const startStatusPolling = () => {
+    setCheckingStatus(true);
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutes
+
+    const interval = setInterval(async () => {
+      attempts++;
+      
+      try {
+        const { data } = await supabase.functions.invoke('whatsapp-qrcode', {
+          body: { action: 'status' },
+        });
+
+        if (data?.connected) {
+          clearInterval(interval);
+          setCheckingStatus(false);
+          setQrModalOpen(false);
+          setWhatsappConnected(true);
+          toast.success('WhatsApp conectado com sucesso!');
+        }
+      } catch (error) {
+        console.error('Status check error:', error);
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setCheckingStatus(false);
+        toast.error('Tempo esgotado. Tente novamente.');
+      }
+    }, 2000);
+  };
+
+  const handleDisconnectWhatsapp = async () => {
+    try {
+      await supabase.functions.invoke('whatsapp-qrcode', {
+        body: { action: 'disconnect' },
+      });
+      setWhatsappConnected(false);
+      setWhatsappNumber('');
+      toast.success('WhatsApp desconectado');
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      toast.error('Erro ao desconectar');
+    }
   };
 
   const handleSaveRules = () => {
@@ -140,7 +293,7 @@ export default function Settings() {
                     <div className="space-y-4">
                       <div className="p-4 bg-muted/50 rounded-lg">
                         <p className="text-sm text-muted-foreground">Calendário selecionado:</p>
-                        <p className="font-medium">Consultas - Dr. Carlos</p>
+                        <p className="font-medium">{googleCalendarName}</p>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" className="flex-1">
@@ -150,7 +303,7 @@ export default function Settings() {
                         <Button
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => setGoogleConnected(false)}
+                          onClick={handleDisconnectGoogle}
                         >
                           Desconectar
                         </Button>
@@ -205,8 +358,8 @@ export default function Settings() {
                   {whatsappConnected ? (
                     <div className="space-y-4">
                       <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Número conectado:</p>
-                        <p className="font-medium">(11) 99999-0000</p>
+                        <p className="text-sm text-muted-foreground">Status:</p>
+                        <p className="font-medium text-success">Sessão ativa</p>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" className="flex-1">
@@ -215,7 +368,7 @@ export default function Settings() {
                         <Button
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => setWhatsappConnected(false)}
+                          onClick={handleDisconnectWhatsapp}
                         >
                           Desconectar
                         </Button>
@@ -223,6 +376,7 @@ export default function Settings() {
                     </div>
                   ) : (
                     <Button onClick={handleConnectWhatsapp} className="w-full">
+                      <QrCode className="w-4 h-4 mr-2" />
                       Conectar via QR Code
                     </Button>
                   )}
@@ -409,6 +563,59 @@ export default function Settings() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* WhatsApp QR Code Modal */}
+        <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-success" />
+                Conectar WhatsApp
+              </DialogTitle>
+              <DialogDescription>
+                Escaneie o QR Code abaixo com o WhatsApp do seu celular
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col items-center justify-center py-6">
+              {qrLoading ? (
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+                </div>
+              ) : qrCode ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="p-4 bg-white rounded-xl">
+                    <img 
+                      src={qrCode} 
+                      alt="WhatsApp QR Code" 
+                      className="w-64 h-64"
+                    />
+                  </div>
+                  {checkingStatus && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Aguardando conexão...
+                    </div>
+                  )}
+                  <ol className="text-sm text-muted-foreground space-y-1">
+                    <li>1. Abra o WhatsApp no seu celular</li>
+                    <li>2. Toque em Menu &gt; Dispositivos conectados</li>
+                    <li>3. Toque em Conectar dispositivo</li>
+                    <li>4. Aponte o celular para esta tela</li>
+                  </ol>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4">
+                  <AlertCircle className="w-12 h-12 text-destructive" />
+                  <p className="text-sm text-muted-foreground">Erro ao gerar QR Code</p>
+                  <Button onClick={handleConnectWhatsapp} variant="outline">
+                    Tentar novamente
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
