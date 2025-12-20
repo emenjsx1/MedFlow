@@ -1041,54 +1041,46 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* Templates Tab */}
+          {/* Templates Tab - Simplified */}
           <TabsContent value="templates" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Mensagens Personalizadas</CardTitle>
+                <CardTitle>Lembretes Automáticos</CardTitle>
                 <CardDescription>
-                  Customize as mensagens enviadas aos pacientes. Use as variáveis: {'{nome}'}, {'{data}'}, {'{hora}'}, {'{endereco}'}
+                  O sistema envia lembretes automaticamente aos pacientes
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="confirmTemplate">Mensagem de confirmação</Label>
-                  <Textarea
-                    id="confirmTemplate"
-                    value={confirmationTemplate}
-                    onChange={(e) => setConfirmationTemplate(e.target.value)}
-                    rows={3}
-                    className="resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enviada {confirmHoursBefore}h antes da consulta
-                  </p>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-success/10 rounded-lg border border-success/20">
+                  <CheckCircle2 className="w-5 h-5 text-success" />
+                  <div>
+                    <p className="font-medium">Lembrete 1 hora antes</p>
+                    <p className="text-sm text-muted-foreground">
+                      Enviado automaticamente 1h antes da consulta
+                    </p>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="reconfirmTemplate">Mensagem de reconfirmação</Label>
-                  <Textarea
-                    id="reconfirmTemplate"
-                    value={reconfirmationTemplate}
-                    onChange={(e) => setReconfirmationTemplate(e.target.value)}
-                    rows={3}
-                    className="resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enviada {reconfirmHoursBefore}h antes se não houver resposta
-                  </p>
+                
+                <div className="flex items-center gap-3 p-4 bg-success/10 rounded-lg border border-success/20">
+                  <CheckCircle2 className="w-5 h-5 text-success" />
+                  <div>
+                    <p className="font-medium">Lembrete 10 minutos antes</p>
+                    <p className="text-sm text-muted-foreground">
+                      Enviado automaticamente 10min antes da consulta
+                    </p>
+                  </div>
                 </div>
 
                 <Separator />
 
                 <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Prévia da mensagem:</p>
-                  <p className="text-sm text-muted-foreground italic">
-                    "Olá Maria! Confirmando sua consulta para 20/12/2024 às 14:00. Responda: 1-Confirmar, 2-Cancelar, 3-Reagendar"
-                  </p>
+                  <p className="text-sm font-medium mb-2">Como funciona:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• O agente IA responde perguntas sobre horários, localização e suporte automaticamente</li>
+                    <li>• Lembretes são enviados 1h e 10min antes de cada consulta</li>
+                    <li>• O paciente pode perguntar sobre localização, horários e pedir suporte</li>
+                  </ul>
                 </div>
-
-                <Button onClick={handleSaveTemplates}>Salvar mensagens</Button>
               </CardContent>
             </Card>
           </TabsContent>
