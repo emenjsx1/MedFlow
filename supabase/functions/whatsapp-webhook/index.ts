@@ -58,12 +58,23 @@ Deno.serve(async (req) => {
 
     // Get phone number (remove @s.whatsapp.net)
     const remoteJid = messageData.key?.remoteJid || ''
-    const patientPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '')
-    
+
+    // Ignore group messages to avoid noise/spam and unnecessary AI calls
+    if (remoteJid.endsWith('@g.us')) {
+      console.log('Ignoring group message:', remoteJid)
+      return new Response(JSON.stringify({ ok: true, ignored: true, reason: 'group' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const patientPhone = remoteJid.replace('@s.whatsapp.net', '')
+
     // Get patient name from push name
     const patientName = messageData.pushName || ''
 
-    console.log('Processing message from:', patientPhone, 'Name:', patientName, 'Text:', messageText)
+    const messageId = messageData.key?.id || ''
+
+    console.log('Processing message from:', patientPhone, 'Name:', patientName, 'Text:', messageText, 'Id:', messageId)
 
     // Find tenant by instance name
     const instanceName = instance || ''
@@ -122,6 +133,8 @@ Deno.serve(async (req) => {
         tenantId,
         patientPhone,
         patientName,
+        messageId,
+        remoteJid,
         message: messageText,
         conversationHistory,
       }),
