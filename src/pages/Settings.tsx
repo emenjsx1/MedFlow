@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,9 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Settings() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleCalendarName, setGoogleCalendarName] = useState('');
   const [whatsappConnected, setWhatsappConnected] = useState(false);
@@ -59,6 +63,24 @@ export default function Settings() {
   const [reconfirmationTemplate, setReconfirmationTemplate] = useState(
     'Olá {nome}, não recebemos sua confirmação. Sua consulta está marcada para {hora}. Confirma? 1-Sim, 2-Cancelar'
   );
+
+  // Handle OAuth callback from URL params
+  useEffect(() => {
+    const googleSuccess = searchParams.get('google_success');
+    const googleError = searchParams.get('google_error');
+    const calendarName = searchParams.get('calendar_name');
+
+    if (googleSuccess === 'true') {
+      setGoogleConnected(true);
+      setGoogleCalendarName(calendarName || 'Calendário Principal');
+      toast.success('Google Agenda conectado com sucesso!');
+      // Clean up URL
+      navigate('/settings', { replace: true });
+    } else if (googleError) {
+      toast.error('Erro ao conectar Google: ' + googleError);
+      navigate('/settings', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Load initial status
   useEffect(() => {
@@ -105,29 +127,17 @@ export default function Settings() {
 
   const handleConnectGoogle = async () => {
     try {
+      const returnUrl = window.location.origin + '/settings';
+      
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: { action: 'getAuthUrl' },
+        body: { action: 'getAuthUrl', returnUrl },
       });
 
       if (error) throw error;
 
       if (data?.authUrl) {
-        // Open OAuth popup
-        const popup = window.open(data.authUrl, 'google-auth', 'width=500,height=600');
-        
-        // Listen for message from popup
-        const handleMessage = (event: MessageEvent) => {
-          if (event.data.success) {
-            setGoogleConnected(true);
-            setGoogleCalendarName(event.data.calendarName || 'Calendário Principal');
-            toast.success('Google Agenda conectado com sucesso!');
-          } else if (event.data.error) {
-            toast.error('Erro ao conectar: ' + event.data.error);
-          }
-          window.removeEventListener('message', handleMessage);
-        };
-
-        window.addEventListener('message', handleMessage);
+        // Redirect to Google OAuth (not popup)
+        window.location.href = data.authUrl;
       }
     } catch (error) {
       console.error('Error connecting Google:', error);
