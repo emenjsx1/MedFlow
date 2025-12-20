@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     console.log('Evolution API URL:', EVOLUTION_API_URL)
 
     // Get tenant_id from auth
-    const authHeader = req.headers.get('Authorization')
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -36,28 +36,22 @@ Deno.serve(async (req) => {
       )
     }
 
+    const accessToken = authHeader.replace(/^Bearer\s+/i, '').trim()
+    if (!accessToken) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Use a service-role client for DB access AND to validate the JWT explicitly.
+    // This avoids relying on global header forwarding behavior in edge runtime.
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
-
-    // Validate the JWT using an ANON client (no session storage in functions)
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
-    const authClient = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    })
-
 
     const {
       data: { user },
       error: userError,
-    } = await authClient.auth.getUser()
+    } = await supabase.auth.getUser(accessToken)
 
     if (userError || !user) {
       console.error('Auth error:', userError)
