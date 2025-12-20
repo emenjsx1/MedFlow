@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import Waitlist from "./pages/Waitlist";
 import Messages from "./pages/Messages";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/users" element={<Users />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

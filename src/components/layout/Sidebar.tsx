@@ -8,6 +8,7 @@ import {
   LogOut,
   ClipboardList,
   MessageSquare,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,12 @@ const navItems = [
     label: 'Usuários',
     href: '/users',
     icon: Users,
+    roles: ['admin'],
+  },
+  {
+    label: 'Administração',
+    href: '/admin',
+    icon: Shield,
     roles: ['admin'],
   },
 ];
