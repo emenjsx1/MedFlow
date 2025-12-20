@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, MessageSquare, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import Logo from '@/components/Logo';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -74,12 +75,7 @@ export default function Login() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-sidebar p-12 flex-col justify-between" style={{ background: 'var(--gradient-sidebar)' }}>
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-sidebar-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-sidebar-foreground">AgendaAI</span>
-          </div>
+          <Logo size="lg" className="text-sidebar-foreground mb-2" />
           <p className="text-sidebar-foreground/70 text-sm">Confirmação inteligente de consultas</p>
         </div>
 
@@ -122,7 +118,7 @@ export default function Login() {
         </div>
 
         <div className="text-sidebar-foreground/50 text-xs">
-          © 2024 AgendaAI. Todos os direitos reservados.
+          © 2024 AgendaClin. Todos os direitos reservados.
         </div>
       </div>
 
@@ -130,11 +126,8 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold">AgendaAI</span>
+          <div className="lg:hidden flex items-center justify-center mb-8">
+            <Logo size="lg" />
           </div>
 
           <Card className="border-0 shadow-soft">

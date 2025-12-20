@@ -1,18 +1,17 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Calendar,
   LayoutDashboard,
   Settings,
   Users,
   LogOut,
   ClipboardList,
   MessageSquare,
-  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import Logo from '@/components/Logo';
 
 const navItems = [
   {
@@ -71,14 +70,9 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <span className="text-lg font-bold text-sidebar-foreground">AgendaAI</span>
-            <p className="text-xs text-sidebar-foreground/60">Gestão de Consultas</p>
-          </div>
+        <div className="flex flex-col">
+          <Logo size="lg" className="text-sidebar-foreground" />
+          <p className="text-xs text-sidebar-foreground/60 mt-1 ml-[60px]">Gestão de Consultas</p>
         </div>
       </div>
 

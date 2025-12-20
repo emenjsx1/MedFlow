@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Calendar, MessageSquare, Bell, Clock, Sparkles, Play, Headphones, AlertTriangle, ArrowDown, CheckCircle2 } from "lucide-react";
+import { Check, MessageSquare, Bell, Clock, Sparkles, Play, Headphones, AlertTriangle, ArrowDown, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Logo from "@/components/Logo";
 
 const allFeatures = [
   "Agendamentos ilimitados",
@@ -144,7 +145,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
-              Com o AgendaAI você terá...
+              Com o AgendaClin você terá...
             </h2>
             <div className="space-y-4">
               {benefits.map((benefit, index) => (
@@ -255,14 +256,9 @@ export default function LandingPage() {
       <footer className="border-t py-8 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-bold">AgendaAI</span>
-            </div>
+            <Logo size="sm" />
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} AgendaAI. Todos os direitos reservados.
+              © {new Date().getFullYear()} AgendaClin. Todos os direitos reservados.
             </p>
             <div className="flex gap-4 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Termos</a>
