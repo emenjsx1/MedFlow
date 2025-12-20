@@ -493,6 +493,10 @@ Responda de forma natural e amigável em português brasileiro.`
     if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
       const instanceName = `clinic_${tenantId.substring(0, 8)}`
       
+      // Add 10 second delay before sending response
+      console.log('Waiting 10 seconds before sending reply...')
+      await new Promise(resolve => setTimeout(resolve, 10000))
+      
       try {
         await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
           method: 'POST',
