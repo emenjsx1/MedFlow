@@ -25,18 +25,37 @@ serve(async (req) => {
       );
     }
 
-    // Verificar token de autenticação
-    const token = req.headers.get('x-webhook-token') || req.headers.get('authorization')?.replace('Bearer ', '');
+    // Verificar token de autenticação (header, query param ou body)
+    const url = new URL(req.url);
+    const queryToken = url.searchParams.get('token');
+    const headerToken = req.headers.get('x-webhook-token') || req.headers.get('authorization')?.replace('Bearer ', '');
+    
+    // Ler o body para verificar token (clone para não consumir)
+    const bodyText = await req.text();
+    let payload: any = {};
+    let bodyToken: string | null = null;
+    
+    try {
+      payload = JSON.parse(bodyText);
+      bodyToken = payload.token || payload.webhook_token || null;
+    } catch {
+      console.error('Failed to parse JSON body');
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const token = headerToken || queryToken || bodyToken;
     
     if (token !== WEBHOOK_TOKEN) {
-      console.error('Invalid or missing webhook token');
+      console.error('Invalid or missing webhook token. Received:', token);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const payload = await req.json();
     console.log('Received webhook payload:', JSON.stringify(payload, null, 2));
 
     // Verificar se é evento de pagamento confirmado
