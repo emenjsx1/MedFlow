@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret',
 }
 
 // Function to download audio from Evolution API and transcribe it
@@ -80,9 +80,43 @@ async function transcribeAudio(audioUrl: string, mediaKey?: string, mimetype?: s
   }
 }
 
+// Validate webhook request - checks for webhook secret header
+function validateWebhookRequest(req: Request): boolean {
+  const WEBHOOK_SECRET = Deno.env.get('EVOLUTION_WEBHOOK_SECRET')
+  
+  // If no secret is configured, log warning but allow (for backwards compatibility during migration)
+  if (!WEBHOOK_SECRET) {
+    console.warn('EVOLUTION_WEBHOOK_SECRET not configured - webhook validation disabled')
+    return true
+  }
+  
+  const providedSecret = req.headers.get('x-webhook-secret')
+  
+  if (!providedSecret) {
+    console.error('Missing x-webhook-secret header')
+    return false
+  }
+  
+  if (providedSecret !== WEBHOOK_SECRET) {
+    console.error('Invalid webhook secret provided')
+    return false
+  }
+  
+  return true
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
+  }
+
+  // Validate webhook authentication
+  if (!validateWebhookRequest(req)) {
+    console.error('Webhook authentication failed')
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
   try {
@@ -254,6 +288,14 @@ Deno.serve(async (req) => {
 
     // Find tenant by instance name (instance name is clinic_{tenant_id_without_hyphens})
     const instanceName = instance || ''
+    
+    // Validate instance name format to prevent injection
+    if (!instanceName || !/^clinic_[a-f0-9]+$/i.test(instanceName)) {
+      console.error('Invalid instance name format:', instanceName)
+      return new Response(JSON.stringify({ ok: true, error: 'Invalid instance format' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     
     // Extract tenant_id from whatsapp_session_id stored in database
     const { data: settings, error: settingsError } = await supabase
