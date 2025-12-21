@@ -63,21 +63,8 @@ serve(async (req) => {
       );
     }
 
-    // Se não tiver documento, usar os últimos 6 dígitos do order_id + "123456" como senha temporária
-    let password: string;
-    if (userDocument) {
-      // Limpar documento - remover caracteres não numéricos
-      password = userDocument.replace(/\D/g, '');
-      if (password.length < 6) {
-        password = password.padEnd(6, '0');
-      }
-    } else {
-      // Senha temporária baseada no order_id ou timestamp
-      const orderId = payload.order_id || '';
-      const orderNumbers = orderId.replace(/\D/g, '');
-      password = orderNumbers.slice(-6).padStart(6, '0') || '123456';
-      console.log('No document provided, using temporary password based on order_id');
-    }
+    // Senha temporária fixa - usuário poderá alterar depois
+    const password = "AgendaClin123";
 
     // Create Supabase admin client
     const supabaseAdmin = createClient(
