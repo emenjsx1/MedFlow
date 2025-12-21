@@ -410,19 +410,20 @@ export default function LandingPage() {
       <section className="pb-10 sm:pb-16">
         <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
           <div className="max-w-4xl mx-auto">
-            <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border relative">
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-primary flex items-center justify-center mx-auto mb-3 sm:mb-4 cursor-pointer hover:scale-105 transition-transform shadow-lg">
-                    <Play className="w-6 h-6 sm:w-10 sm:h-10 text-primary-foreground ml-1" />
-                  </div>
-                  <p className="text-sm sm:text-lg font-medium">Clique para assistir</p>
-                  <p className="text-xs sm:text-sm mt-1 opacity-60">Veja como funciona em 2 minutos</p>
-                </div>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
-                <div className="h-full bg-primary w-0"></div>
-              </div>
+            <div className="rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
+              <div 
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    <vturb-smartplayer id="vid-69487a1e798d3e9d452d5a4b" style="display: block; margin: 0 auto; width: 100%;"></vturb-smartplayer>
+                    <script type="text/javascript">
+                      var s=document.createElement("script");
+                      s.src="https://scripts.converteai.net/06360127-0c05-416d-8bd8-3f5e34305802/players/69487a1e798d3e9d452d5a4b/v4/player.js";
+                      s.async=!0;
+                      document.head.appendChild(s);
+                    </script>
+                  `
+                }}
+              />
             </div>
 
             <div className="flex justify-center mt-4 sm:mt-6">
