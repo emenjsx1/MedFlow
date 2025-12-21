@@ -283,8 +283,33 @@ Deno.serve(async (req) => {
     const hasProfessionals = professionals && professionals.length > 0
     console.log(`Found ${professionals?.length || 0} active professionals`)
 
-    // Get available slots from appointments AND Google Calendar
+    // Fetch waitlist with patient info
+    const { data: waitlistData } = await supabase
+      .from('waitlist')
+      .select('*, patient:patients(name, whatsapp)')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .order('priority', { ascending: false })
+
+    const waitlistCount = waitlistData?.length || 0
+    console.log(`Found ${waitlistCount} patients on waitlist`)
+
+    // Fetch upcoming appointments count
     const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    
+    const { data: todayAppointments } = await supabase
+      .from('appointments')
+      .select('id, scheduled_at, patient_name, professional_name, status')
+      .eq('tenant_id', tenantId)
+      .gte('scheduled_at', `${todayStr}T00:00:00`)
+      .lte('scheduled_at', `${todayStr}T23:59:59`)
+      .in('status', ['pending', 'confirmed'])
+      .order('scheduled_at')
+
+    const todayAppointmentsCount = todayAppointments?.length || 0
+
+    // Get available slots from appointments AND Google Calendar
     const nextWeek = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
 
     // Build slots per professional (or single global slot list if no professionals)
@@ -336,6 +361,20 @@ Deno.serve(async (req) => {
       
       return accessToken
     }
+
+    // Day names in Portuguese
+    const dayTranslation: Record<string, string> = {
+      'monday': 'Segunda-feira',
+      'tuesday': 'Terça-feira',
+      'wednesday': 'Quarta-feira',
+      'thursday': 'Quinta-feira',
+      'friday': 'Sexta-feira',
+      'saturday': 'Sábado',
+      'sunday': 'Domingo'
+    }
+
+    // Check if a professional works today
+    const todayDayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][today.getDay()]
     
     if (hasProfessionals) {
       // Get valid access token once for all professionals
@@ -476,69 +515,91 @@ Deno.serve(async (req) => {
       ? tenantSettings.agent_faqs.map(faq => `- "${faq.question}" → "${faq.answer}"`).join('\n')
       : ''
 
-    // Build professionals list for prompt
-    const professionalsInfo = hasProfessionals 
-      ? `\nPROFISSIONAIS DISPONÍVEIS:\n${professionals!.map(p => `- ${p.name}${p.specialty ? ` (${p.specialty})` : ''}`).join('\n')}\n`
-      : ''
+    // Build detailed professionals info with schedules
+    let professionalsDetailedInfo = ''
+    if (hasProfessionals && professionals) {
+      professionalsDetailedInfo = `\n📋 PROFISSIONAIS DA CLÍNICA (INFORMAÇÃO COMPLETA):\n`
+      for (const prof of professionals) {
+        const workDays = (prof.working_days || []).map((d: string) => dayTranslation[d] || d).join(', ')
+        const worksToday = (prof.working_days || []).includes(todayDayName)
+        const profTodaySlots = availableSlots.filter(s => s.professionalId === prof.id && s.date === todayStr)
+        
+        professionalsDetailedInfo += `
+👨‍⚕️ ${prof.name}${prof.specialty ? ` - ${prof.specialty}` : ''}
+   • Horário: ${prof.business_hours_start || '08:00'} às ${prof.business_hours_end || '18:00'}
+   • Dias de trabalho: ${workDays}
+   • Duração consulta: ${prof.appointment_duration_minutes || 30} minutos
+   • Trabalha HOJE (${dayTranslation[todayDayName]}): ${worksToday ? 'SIM ✅' : 'NÃO ❌'}
+   • Vagas disponíveis hoje: ${profTodaySlots.length}
+`
+      }
+    }
+
+    // Build waitlist info
+    const waitlistInfo = `\n📝 LISTA DE ESPERA:
+- Total de pacientes na fila: ${waitlistCount}
+${waitlistCount > 0 && waitlistData ? `- Próximos na fila: ${waitlistData.slice(0, 3).map(w => w.patient?.name || 'Paciente').join(', ')}` : '- A lista está vazia'}
+`
+
+    // Build today's summary
+    const todaySummary = `\n📅 RESUMO DE HOJE (${today.toLocaleDateString('pt-BR')}):
+- Consultas agendadas hoje: ${todayAppointmentsCount}
+- Vagas disponíveis hoje: ${availableSlots.filter(s => s.date === todayStr).length}
+${todayAppointments && todayAppointments.length > 0 ? `- Próximas consultas: ${todayAppointments.slice(0, 3).map(a => `${a.patient_name} às ${new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${a.professional_name ? ` com ${a.professional_name}` : ''}`).join(', ')}` : ''}
+`
 
     // Format available slots for prompt (group by time to show which professionals are available)
     const slotsForPrompt = hasProfessionals
-      ? availableSlots.slice(0, 20).map(s => `- ${s.formatted} com ${s.professionalName} (${s.date})`).join('\n')
-      : availableSlots.slice(0, 15).map(s => `- ${s.formatted} (${s.date})`).join('\n')
+      ? availableSlots.slice(0, 25).map(s => `- ${s.formatted} com ${s.professionalName} (${s.date})`).join('\n')
+      : availableSlots.slice(0, 20).map(s => `- ${s.formatted} (${s.date})`).join('\n')
 
     // Build system prompt with improved instructions
-    const systemPrompt = `Você é um assistente virtual de agendamento para a clínica "${tenantSettings.clinic_name || 'Nossa Clínica'}".
+    const systemPrompt = `Você é um assistente virtual INTELIGENTE da clínica "${tenantSettings.clinic_name || 'Nossa Clínica'}".
+Você tem ACESSO COMPLETO a todas as informações da clínica e pode responder QUALQUER pergunta sobre profissionais, horários, disponibilidade, lista de espera, etc.
 
-DATA ATUAL: ${new Date().toLocaleDateString('pt-BR')} (${currentYear})
-IMPORTANTE: Todos os agendamentos devem usar o ANO ${currentYear}!
+📆 DATA/HORA ATUAL: ${today.toLocaleDateString('pt-BR')} ${today.toLocaleTimeString('pt-BR')} (${currentYear})
+DIA DA SEMANA: ${dayTranslation[todayDayName]}
 
-INFORMAÇÕES DA CLÍNICA:
+🏥 INFORMAÇÕES DA CLÍNICA:
 - Nome: ${tenantSettings.clinic_name || 'Nossa Clínica'}
 - Endereço: ${tenantSettings.clinic_address || 'Endereço não configurado'}
 - Telefone/Suporte: ${tenantSettings.clinic_phone || 'Telefone não configurado'}
-- Horário de funcionamento: ${tenantSettings.business_hours_start || '08:00'} às ${tenantSettings.business_hours_end || '18:00'}
-- Dias de funcionamento: ${(tenantSettings.working_days || []).join(', ')}
-- Duração das consultas: ${tenantSettings.appointment_duration_minutes || 30} minutos
-${professionalsInfo}${businessContextSection}
-HORÁRIOS DISPONÍVEIS PARA OS PRÓXIMOS 14 DIAS:
+- Horário geral: ${tenantSettings.business_hours_start || '08:00'} às ${tenantSettings.business_hours_end || '18:00'}
+- Dias de funcionamento: ${(tenantSettings.working_days || []).map(d => dayTranslation[d] || d).join(', ')}
+${professionalsDetailedInfo}${todaySummary}${waitlistInfo}${businessContextSection}
+
+⏰ HORÁRIOS DISPONÍVEIS PARA OS PRÓXIMOS 14 DIAS:
 ${slotsForPrompt}
-${availableSlots.length > 20 ? `\n... e mais ${availableSlots.length - 20} horários disponíveis.` : ''}
+${availableSlots.length > 25 ? `\n... e mais ${availableSlots.length - 25} horários disponíveis.` : ''}
 
-SUAS INSTRUÇÕES (SIGA RIGOROSAMENTE):
-1. Seja cordial e profissional
-2. Se o paciente perguntar sobre serviços, preços ou informações do negócio, use as informações em "SOBRE O NEGÓCIO" e nas "PERGUNTAS FREQUENTES CONFIGURADAS"
-3. Se não souber o nome do paciente, pergunte o nome COMPLETO primeiro
-4. Quando tiver o nome, sugira 3-5 horários disponíveis${hasProfessionals ? ' mencionando o profissional disponível' : ''}
-5. Quando o paciente escolher um horário:
-   - MARQUE IMEDIATAMENTE usando: [AGENDAR: ${currentYear}-MM-DD HH:MM | NOME: Nome do Paciente${hasProfessionals ? ' | PROFISSIONAL: Nome do Profissional' : ''}]
-   - SEMPRE use o ano ${currentYear}!
-6. Se o paciente pedir um horário que NÃO está na lista de disponíveis:
-   - Informe que o horário está ocupado
-   - Sugira 3 horários alternativos que ESTÃO disponíveis
-7. Se o paciente quiser REAGENDAR ou ALTERAR:
-   - Pergunte para qual nova data/horário deseja
-   - Ofereça opções disponíveis
-8. Se o paciente quiser CANCELAR:
-   - Confirme o cancelamento
-   - Pergunte se deseja reagendar
-${hasProfessionals ? `9. Se o paciente pedir um profissional específico, mostre apenas horários desse profissional
-10. Se não especificar profissional, escolha o primeiro disponível no horário solicitado` : ''}
+📌 SUAS CAPACIDADES (você pode fazer TUDO isso):
+1. ✅ Responder sobre QUALQUER profissional: horário, dias de trabalho, especialidade, se trabalha hoje
+2. ✅ Verificar disponibilidade no Google Calendar em tempo real
+3. ✅ Informar quantas pessoas estão na lista de espera
+4. ✅ Adicionar paciente à lista de espera
+5. ✅ Agendar consultas com qualquer profissional disponível
+6. ✅ Informar sobre consultas de hoje e próximos dias
+7. ✅ Responder perguntas sobre serviços, preços, localização
 
-PERGUNTAS FREQUENTES (responda diretamente):
-- "Qual o horário de funcionamento?" → "${tenantSettings.business_hours_start || '08:00'} às ${tenantSettings.business_hours_end || '18:00'}"
-- "Qual o endereço/localização?" → "${tenantSettings.clinic_address || 'Endereço da clínica'}"
-- "Qual o telefone de contato/suporte?" → "${tenantSettings.clinic_phone || 'Telefone da clínica'}"
-- "Quero falar com suporte/atendente humano" → "Nosso suporte está disponível pelo telefone ${tenantSettings.clinic_phone || 'da clínica'}. Você pode ligar ou enviar mensagem diretamente!"
-- "Vocês atendem sábado/domingo/feriado?" → Verifique os dias: ${(tenantSettings.working_days || []).join(', ')}
-${customFaqs ? `\nPERGUNTAS FREQUENTES CONFIGURADAS PELA CLÍNICA (use estas respostas quando o paciente perguntar algo similar):\n${customFaqs}\n` : ''}
-INFORMAÇÕES DO PACIENTE ATUAL:
+📋 COMANDOS ESPECIAIS (use quando apropriado):
+- Para AGENDAR: [AGENDAR: ${currentYear}-MM-DD HH:MM | NOME: Nome Paciente${hasProfessionals ? ' | PROFISSIONAL: Nome Profissional' : ''}]
+- Para LISTA DE ESPERA: [LISTA_ESPERA: NOME: Nome Paciente | DATA_PREFERIDA: ${currentYear}-MM-DD | HORARIO: HH:MM]
+
+📝 INSTRUÇÕES:
+1. Seja cordial, profissional e PROATIVO
+2. Se perguntarem sobre um profissional específico, use as informações detalhadas acima
+3. Se perguntarem "o Dr. X trabalha hoje?", verifique os dias de trabalho do profissional
+4. Se não houver vagas, ofereça adicionar à lista de espera
+5. Se não souber o nome do paciente para agendamento, pergunte primeiro
+6. Use as informações em tempo real - você tem acesso a tudo!
+
+${customFaqs ? `❓ PERGUNTAS FREQUENTES CONFIGURADAS:\n${customFaqs}\n` : ''}
+
+👤 PACIENTE ATUAL:
 - Telefone: ${patientPhone}
 - Nome: ${patientName || 'Ainda não informado'}
 
-EXEMPLO DE AGENDAMENTO (use o ano ${currentYear}!):
-[AGENDAR: ${currentYear}-12-23 09:00 | NOME: João Silva${hasProfessionals ? ' | PROFISSIONAL: Dr. Carlos' : ''}]
-
-Responda de forma natural e amigável em português brasileiro.`
+Responda de forma natural, amigável e COMPLETA em português brasileiro. Você é um assistente inteligente que SABE DE TUDO sobre a clínica!`
 
     // Prepare messages for AI
     const messages = [
@@ -801,8 +862,108 @@ Responda de forma natural e amigável em português brasileiro.`
       }
     }
 
-    // Remove the booking command from the reply sent to user
-    const cleanReply = reply.replace(/\[AGENDAR:[^\]]+\]/g, '').trim()
+    // Check for waitlist command
+    // Format: [LISTA_ESPERA: NOME: Nome Paciente | DATA_PREFERIDA: 2025-01-15 | HORARIO: 09:00]
+    const waitlistMatch = reply.match(/\[LISTA_ESPERA:\s*NOME:\s*([^|]+)\s*(?:\|\s*DATA_PREFERIDA:\s*(\d{4}-\d{2}-\d{2}))?\s*(?:\|\s*HORARIO:\s*(\d{2}:\d{2}))?\s*\]/)
+    let waitlistAdded = null
+
+    if (waitlistMatch) {
+      const [, nameRaw, preferredDate, preferredTime] = waitlistMatch
+      const name = nameRaw.trim()
+      
+      console.log('Adding to waitlist:', { name, preferredDate, preferredTime })
+
+      // Find or create patient
+      let waitlistPatientId: string | null = patientId
+
+      const { data: patientRow } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('whatsapp', patientPhone)
+        .maybeSingle()
+
+      if (patientRow?.id) {
+        waitlistPatientId = patientRow.id
+        await supabase
+          .from('patients')
+          .update({ name: name })
+          .eq('id', waitlistPatientId)
+      } else {
+        const { data: newPatient, error: patientError } = await supabase
+          .from('patients')
+          .insert({
+            tenant_id: tenantId,
+            name: name,
+            whatsapp: patientPhone,
+          })
+          .select('id')
+          .single()
+
+        if (!patientError && newPatient) {
+          waitlistPatientId = newPatient.id
+          console.log('New patient created for waitlist:', waitlistPatientId)
+        }
+      }
+
+      if (waitlistPatientId) {
+        // Check if patient is already on waitlist
+        const { data: existingWaitlist } = await supabase
+          .from('waitlist')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('patient_id', waitlistPatientId)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (existingWaitlist) {
+          // Update existing waitlist entry
+          const { data: updated, error: updateError } = await supabase
+            .from('waitlist')
+            .update({
+              preferred_date: preferredDate || null,
+              preferred_time_start: preferredTime || null,
+            })
+            .eq('id', existingWaitlist.id)
+            .select()
+            .single()
+
+          if (!updateError && updated) {
+            waitlistAdded = updated
+            console.log('Waitlist entry updated:', updated.id)
+          }
+        } else {
+          // Create new waitlist entry
+          const { data: newWaitlist, error: waitlistError } = await supabase
+            .from('waitlist')
+            .insert({
+              tenant_id: tenantId,
+              patient_id: waitlistPatientId,
+              preferred_date: preferredDate || null,
+              preferred_time_start: preferredTime || null,
+              is_active: true,
+              priority: 0,
+            })
+            .select()
+            .single()
+
+          if (!waitlistError && newWaitlist) {
+            waitlistAdded = newWaitlist
+            console.log('Patient added to waitlist:', newWaitlist.id)
+          } else {
+            console.error('Waitlist creation error:', waitlistError)
+          }
+        }
+        
+        patientId = waitlistPatientId
+      }
+    }
+
+    // Remove the booking and waitlist commands from the reply sent to user
+    const cleanReply = reply
+      .replace(/\[AGENDAR:[^\]]+\]/g, '')
+      .replace(/\[LISTA_ESPERA:[^\]]+\]/g, '')
+      .trim()
 
     // Save incoming message
     await supabase.from('messages').insert({
@@ -852,6 +1013,7 @@ Responda de forma natural e amigável em português brasileiro.`
         reply: cleanReply,
         appointmentCreated,
         calendarEventId,
+        waitlistAdded,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
