@@ -128,9 +128,11 @@ async function createGoogleCalendarEvent(
     start: string
     end: string
     attendeePhone?: string
+    timezone?: string
   }
 ): Promise<{ id: string } | null> {
   try {
+    const tz = event.timezone || 'America/Sao_Paulo'
     const response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
       {
@@ -144,11 +146,11 @@ async function createGoogleCalendarEvent(
           description: event.description,
           start: {
             dateTime: event.start,
-            timeZone: 'America/Sao_Paulo',
+            timeZone: tz,
           },
           end: {
             dateTime: event.end,
-            timeZone: 'America/Sao_Paulo',
+            timeZone: tz,
           },
           reminders: {
             useDefault: false,
@@ -828,7 +830,13 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
       const [, date, time, nameRaw] = bookingMatch
       const professionalNameFromAI = bookingMatchWithProf ? bookingMatchWithProf[4]?.trim() : null
       const name = nameRaw.trim()
+      const tenantTimezone = tenantSettings.timezone || 'America/Sao_Paulo'
+      
+      // Create scheduledAt - the time provided by user is in their timezone
+      // We'll store it as a simple ISO timestamp and use the timezone setting for display
       const scheduledAt = `${date}T${time}:00`
+      
+      console.log('Booking request:', { date, time, name, scheduledAt, timezone: tenantTimezone })
       
       // Find the professional to use
       let selectedProfessional: { id: string; name: string; google_calendar_id: string | null; appointment_duration_minutes: number | null } | null = null
@@ -930,12 +938,13 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
               start: `${date}T${time}:00`,
               end: `${date}T${endTime}:00`,
               attendeePhone: patientPhone,
+              timezone: tenantTimezone,
             }
           )
           
           if (calendarEvent) {
             calendarEventId = calendarEvent.id
-            console.log('Calendar event created:', calendarEventId)
+            console.log('Calendar event created:', calendarEventId, 'with timezone:', tenantTimezone)
           }
         }
       } else {
