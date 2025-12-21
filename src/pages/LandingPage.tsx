@@ -438,7 +438,7 @@ export default function LandingPage() {
 
             <div className="flex justify-center mt-4 sm:mt-6">
               <Button size="lg" className="gap-2 text-sm sm:text-base px-4 sm:px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full sm:w-auto" onClick={scrollToPricing}>
-                Quero automatizar minha clínica
+                Quero começar agora
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
@@ -664,7 +664,7 @@ export default function LandingPage() {
             Enquanto você descansa, a IA continua agendando e atendendo seus pacientes
           </p>
           <Button size="lg" variant="secondary" className="gap-2 font-semibold text-sm sm:text-base w-full sm:w-auto" onClick={scrollToPricing}>
-            Quero Automatizar Minha Clínica
+            Quero ter acesso
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
