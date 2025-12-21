@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, MessageSquare, Bell, Clock, Sparkles, Play, Headphones, AlertTriangle, ArrowDown, CheckCircle2 } from "lucide-react";
+import { Check, MessageSquare, Bell, Clock, Sparkles, Play, Headphones, ArrowRight, CheckCircle2, Users, Calendar, Bot, Shield, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 
@@ -47,17 +47,72 @@ const plans = [
 ];
 
 const painPoints = [
-  "Pacientes que não aparecem e você fica com horário vago",
-  "Ter que responder WhatsApp fora do horário de trabalho",
-  "Perder pacientes porque não conseguiu responder a tempo",
-  "Funcionários gastando horas confirmando consultas manualmente"
+  {
+    icon: Clock,
+    title: "Pacientes que faltam",
+    description: "Horários vagos que geram prejuízo financeiro e bagunçam sua agenda"
+  },
+  {
+    icon: MessageSquare,
+    title: "WhatsApp fora de hora",
+    description: "Ter que responder mensagens à noite, finais de semana e feriados"
+  },
+  {
+    icon: Users,
+    title: "Equipe sobrecarregada",
+    description: "Funcionários gastando horas confirmando consultas manualmente"
+  }
 ];
 
-const benefits = [
-  "IA atendendo seus pacientes 24 horas por dia, 7 dias por semana",
-  "Lembretes automáticos que reduzem faltas em até 70%",
-  "Fila de espera que preenche horários vagos automaticamente",
-  "Mais tempo para você e sua equipe focarem no que importa"
+const howItWorks = [
+  {
+    step: 1,
+    title: "Conecte seu WhatsApp",
+    description: "Em menos de 5 minutos você conecta sua conta e configura as mensagens"
+  },
+  {
+    step: 2,
+    title: "IA assume o atendimento",
+    description: "Nossa IA responde, agenda e confirma consultas automaticamente"
+  },
+  {
+    step: 3,
+    title: "Foque no que importa",
+    description: "Você atende seus pacientes enquanto a tecnologia cuida do resto"
+  }
+];
+
+const features = [
+  {
+    icon: Bot,
+    title: "Atendimento 24/7 por IA",
+    description: "Responda pacientes a qualquer hora, mesmo enquanto você dorme"
+  },
+  {
+    icon: Bell,
+    title: "Lembretes automáticos",
+    description: "Reduza faltas em até 70% com lembretes inteligentes"
+  },
+  {
+    icon: Calendar,
+    title: "Agenda inteligente",
+    description: "Múltiplos profissionais com agendas independentes"
+  },
+  {
+    icon: Users,
+    title: "Fila de espera",
+    description: "Preencha horários vagos automaticamente"
+  },
+  {
+    icon: Shield,
+    title: "Google Calendar",
+    description: "Sincronização em tempo real com sua agenda"
+  },
+  {
+    icon: Zap,
+    title: "Relatórios",
+    description: "Métricas e insights sobre sua clínica"
+  }
 ];
 
 export default function LandingPage() {
@@ -67,53 +122,95 @@ export default function LandingPage() {
     navigate(`/login?plan=${planId}`);
   };
 
+  const scrollToPricing = () => {
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Attention Header */}
-      <div className="bg-destructive text-destructive-foreground py-3">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm md:text-base font-bold flex items-center justify-center gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            ATENÇÃO: Assista o vídeo abaixo até o final para entender como funciona
-            <AlertTriangle className="w-4 h-4" />
-          </p>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <Logo size="md" />
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={scrollToPricing}>
+                Planos
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/login')}>
+                Entrar
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* Hero Section - Direct Response Style */}
-      <section className="py-12 md:py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight mb-8 max-w-4xl mx-auto leading-tight">
-            🚨 VOCÊ JÁ SE IMAGINOU SUA AGENDA FUNCIONANDO SOZINHA?
-          </h1>
-          
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Descubra como clínicas e consultórios estão <span className="font-bold text-foreground">eliminando faltas</span> e <span className="font-bold text-foreground">atendendo pacientes 24 horas por dia</span> sem contratar mais funcionários
-          </p>
+      {/* Hero Section */}
+      <section className="py-16 md:py-24 overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge variant="secondary" className="mb-6">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Automação inteligente para clínicas
+            </Badge>
+            
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight">
+              Elimine as faltas, automatize confirmações e{" "}
+              <span className="text-primary">aumente o faturamento</span> da sua clínica
+            </h1>
+            
+            {/* Subheadline with 3 pain points */}
+            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+              Chega de{" "}
+              <span className="font-semibold text-foreground">pacientes que não aparecem</span>,{" "}
+              <span className="font-semibold text-foreground">WhatsApp tocando fora de hora</span> e{" "}
+              <span className="font-semibold text-foreground">funcionários perdendo tempo com ligações</span>.
+            </p>
 
-          <div className="flex items-center justify-center gap-2 mb-8 text-muted-foreground">
-            <ArrowDown className="w-5 h-5 animate-bounce" />
-            <span className="text-sm font-medium">ASSISTA O VÍDEO ABAIXO</span>
-            <ArrowDown className="w-5 h-5 animate-bounce" />
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+              <Button size="lg" className="gap-2 text-base px-8" onClick={scrollToPricing}>
+                Quero automatizar minha clínica
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button size="lg" variant="outline" className="gap-2 text-base" onClick={() => navigate('/login')}>
+                Já tenho conta
+              </Button>
+            </div>
+
+            {/* Trust badges */}
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <span>Sem fidelidade</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <span>Configuração em 5 min</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <span>Suporte em português</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* VSL Section */}
-      <section className="pb-16">
+      <section className="pb-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            {/* VTurb Embed Container */}
-            <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-primary/20">
-              {/* Replace this div with your VTurb embed code */}
+            <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-2xl overflow-hidden shadow-2xl border">
               <div 
                 id="vturb-embed" 
-                className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black"
+                className="w-full h-full flex items-center justify-center"
               >
-                <div className="text-center text-white/60">
-                  <Play className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-sm">Cole aqui o embed do VTurb</p>
-                  <p className="text-xs mt-2 opacity-50">Substitua este div pelo código do player</p>
+                <div className="text-center text-muted-foreground">
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Play className="w-8 h-8 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium">Cole aqui o embed do VTurb</p>
+                  <p className="text-xs mt-1 opacity-60">Substitua este div pelo código do player</p>
                 </div>
               </div>
             </div>
@@ -122,45 +219,89 @@ export default function LandingPage() {
       </section>
 
       {/* Pain Points Section */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
-              Se você está cansado de...
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Você está cansado de...
             </h2>
-            <div className="space-y-4">
-              {painPoints.map((point, index) => (
-                <div key={index} className="flex items-start gap-3 bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                  <span className="text-destructive text-xl">✗</span>
-                  <p className="text-lg">{point}</p>
-                </div>
-              ))}
-            </div>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Esses problemas afetam milhares de clínicas todos os dias
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {painPoints.map((point, index) => (
+              <Card key={index} className="border-destructive/20 bg-destructive/5">
+                <CardHeader>
+                  <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
+                    <point.icon className="w-6 h-6 text-destructive" />
+                  </div>
+                  <CardTitle className="text-lg">{point.title}</CardTitle>
+                  <CardDescription>{point.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section className="py-16">
+      {/* How it Works */}
+      <section className="py-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
-              Com o AgendaClin você terá...
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Como funciona
             </h2>
-            <div className="space-y-4">
-              {benefits.map((benefit, index) => (
-                <div key={index} className="flex items-start gap-3 bg-green-500/10 p-4 rounded-lg border border-green-500/20">
-                  <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-lg">{benefit}</p>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Em 3 passos simples você automatiza toda sua operação
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {howItWorks.map((item) => (
+              <div key={item.step} className="text-center">
+                <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6">
+                  {item.step}
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                <p className="text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Features Grid */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Tudo o que você precisa em um só lugar
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Funcionalidades completas para transformar sua clínica
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {features.map((feature, index) => (
+              <Card key={index} className="bg-background">
+                <CardHeader>
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                    <feature.icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What's Included */}
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
             O que está incluso em todos os planos
@@ -168,10 +309,10 @@ export default function LandingPage() {
           <p className="text-center text-muted-foreground mb-10 max-w-2xl mx-auto">
             Acesso completo a todas as funcionalidades, sem surpresas
           </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             {allFeatures.map((feature, index) => (
-              <div key={index} className="flex items-center gap-2 bg-background p-4 rounded-lg border">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <div key={index} className="flex items-center gap-3 bg-muted/50 p-4 rounded-xl">
+                <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                 <span className="text-sm font-medium">{feature}</span>
               </div>
             ))}
@@ -180,7 +321,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20">
+      <section id="pricing" className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -194,11 +335,11 @@ export default function LandingPage() {
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
-                className={`relative ${plan.popular ? 'border-primary shadow-lg scale-105 z-10' : ''}`}
+                className={`relative ${plan.popular ? 'border-primary shadow-xl ring-2 ring-primary/20 scale-105 z-10' : ''}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary">Mais Escolhido</Badge>
+                    <Badge className="bg-primary shadow-lg">Mais Escolhido</Badge>
                   </div>
                 )}
                 <CardHeader className="text-center pb-2">
@@ -209,7 +350,7 @@ export default function LandingPage() {
                     <span className="text-muted-foreground">/{plan.interval}</span>
                   </div>
                   {plan.savings && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
                       {plan.savings}
                     </Badge>
                   )}
@@ -245,15 +386,17 @@ export default function LandingPage() {
           <Button 
             size="lg" 
             variant="secondary"
-            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+            className="gap-2"
+            onClick={scrollToPricing}
           >
             Quero Automatizar Minha Clínica
+            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 bg-muted/30">
+      <footer className="border-t py-8 bg-background">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Logo size="sm" />

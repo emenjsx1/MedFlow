@@ -38,6 +38,7 @@ export interface Appointment {
   scheduled_at: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'rescheduled' | 'in_replacement' | 'filled';
   risk_level: 'low' | 'medium' | 'high';
+  professional_id?: string;
   professional_name?: string;
   last_contact_at?: string;
 }
