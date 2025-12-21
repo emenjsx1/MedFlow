@@ -431,6 +431,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_patient_risk: {
+        Args: { p_patient_id: string }
+        Returns: Database["public"]["Enums"]["risk_level"]
+      }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
-      .select('*, tenant_settings:tenant_id(clinic_name, clinic_address, clinic_phone, whatsapp_session_id)')
+      .select('*, tenant_settings:tenant_settings!appointments_tenant_id_fkey(clinic_name, clinic_address, clinic_phone, whatsapp_session_id)')
       .in('status', ['pending', 'confirmed'])
       .gte('scheduled_at', now.toISOString())
       .lte('scheduled_at', oneHourFromNow.toISOString())
