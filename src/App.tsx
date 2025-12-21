@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import Waitlist from "./pages/Waitlist";
 import Messages from "./pages/Messages";
+import Patients from "./pages/Patients";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/users" element={<Users />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/patients" element={<Patients />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -3,6 +3,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Plus,
   MoreHorizontal,
@@ -38,6 +40,8 @@ import {
   Calendar,
   RefreshCw,
   Loader2,
+  UserPlus,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -61,9 +65,19 @@ interface WaitlistEntry {
   } | null;
 }
 
+interface ReplacementSlot {
+  id: string;
+  patient_name: string;
+  patient_phone: string | null;
+  scheduled_at: string;
+  status: string;
+  professional_name: string | null;
+}
+
 export default function Waitlist() {
   const { tenantId } = useAuth();
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+  const [replacements, setReplacements] = useState<ReplacementSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -73,26 +87,41 @@ export default function Waitlist() {
   const [newPreferredTimeStart, setNewPreferredTimeStart] = useState('');
   const [newPreferredTimeEnd, setNewPreferredTimeEnd] = useState('');
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('waitlist');
 
   useEffect(() => {
     if (tenantId) {
-      loadWaitlist();
+      loadData();
     }
   }, [tenantId]);
 
-  const loadWaitlist = async () => {
+  const loadData = async () => {
     try {
-      const { data, error } = await supabase
+      // Load waitlist
+      const { data: waitlistData, error: waitlistError } = await supabase
         .from('waitlist')
         .select(`*, patient:patients(name, whatsapp)`)
         .eq('tenant_id', tenantId)
+        .eq('is_active', true)
         .order('priority', { ascending: true });
 
-      if (error) throw error;
-      setWaitlist(data || []);
+      if (waitlistError) throw waitlistError;
+      setWaitlist(waitlistData || []);
+
+      // Load appointments in replacement status
+      const { data: replacementData, error: replacementError } = await supabase
+        .from('appointments')
+        .select('id, patient_name, patient_phone, scheduled_at, status, professional_name')
+        .eq('tenant_id', tenantId)
+        .in('status', ['in_replacement', 'cancelled'])
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true });
+
+      if (replacementError) throw replacementError;
+      setReplacements(replacementData || []);
     } catch (error) {
-      console.error('Error loading waitlist:', error);
-      toast.error('Erro ao carregar fila de espera');
+      console.error('Error loading data:', error);
+      toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -101,10 +130,8 @@ export default function Waitlist() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadWaitlist();
+    loadData();
   };
-
-  const activeCount = waitlist.filter((w) => w.is_active).length;
 
   const handleAddToWaitlist = async () => {
     if (!newPatientName || !newPatientPhone) {
@@ -114,9 +141,8 @@ export default function Waitlist() {
 
     setSaving(true);
     try {
-      // Create or find patient
       let patientId: string;
-      
+
       const { data: existingPatient } = await supabase
         .from('patients')
         .select('id')
@@ -141,18 +167,15 @@ export default function Waitlist() {
         patientId = newPatient.id;
       }
 
-      // Add to waitlist
-      const { error: waitlistError } = await supabase
-        .from('waitlist')
-        .insert({
-          tenant_id: tenantId,
-          patient_id: patientId,
-          preferred_date: newPreferredDate || null,
-          preferred_time_start: newPreferredTimeStart || null,
-          preferred_time_end: newPreferredTimeEnd || null,
-          priority: waitlist.length + 1,
-          is_active: true,
-        });
+      const { error: waitlistError } = await supabase.from('waitlist').insert({
+        tenant_id: tenantId,
+        patient_id: patientId,
+        preferred_date: newPreferredDate || null,
+        preferred_time_start: newPreferredTimeStart || null,
+        preferred_time_end: newPreferredTimeEnd || null,
+        priority: waitlist.length + 1,
+        is_active: true,
+      });
 
       if (waitlistError) throw waitlistError;
 
@@ -163,7 +186,7 @@ export default function Waitlist() {
       setNewPreferredDate('');
       setNewPreferredTimeStart('');
       setNewPreferredTimeEnd('');
-      loadWaitlist();
+      loadData();
     } catch (error) {
       console.error('Error adding to waitlist:', error);
       toast.error('Erro ao adicionar à fila');
@@ -172,62 +195,64 @@ export default function Waitlist() {
     }
   };
 
-  const handleOfferSlot = async (id: string, name: string, whatsapp: string | undefined) => {
+  const handleOfferSlot = async (patientName: string, whatsapp: string | undefined, slotDate?: string) => {
     if (!whatsapp) {
       toast.error('Paciente não tem WhatsApp cadastrado');
       return;
     }
-    
+
     try {
-      // Get next available slots
-      const today = new Date();
-      const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-      
-      const { data: appointments } = await supabase
-        .from('appointments')
-        .select('scheduled_at')
-        .eq('tenant_id', tenantId)
-        .gte('scheduled_at', today.toISOString())
-        .lte('scheduled_at', nextWeek.toISOString())
-        .in('status', ['cancelled', 'no_show', 'in_replacement']);
-      
-      let slotMessage = 'Temos vagas disponíveis esta semana!';
-      if (appointments && appointments.length > 0) {
-        const slot = new Date(appointments[0].scheduled_at);
+      let slotMessage = 'Temos vagas disponíveis!';
+      if (slotDate) {
+        const slot = new Date(slotDate);
         slotMessage = `Temos uma vaga disponível: ${format(slot, "dd/MM 'às' HH:mm", { locale: ptBR })}`;
       }
-      
+
       const { error } = await supabase.functions.invoke('send-manual-message', {
         body: {
           tenantId,
           patientPhone: whatsapp,
-          message: `Olá ${name}! 🎉\n\n${slotMessage}\n\nDeseja agendar? Responda SIM para confirmar.\n\nAguardamos sua resposta!`,
+          message: `Olá ${patientName}! 🎉\n\n${slotMessage}\n\nDeseja agendar? Responda SIM para confirmar.\n\nAguardamos sua resposta!`,
         },
       });
-      
+
       if (error) throw error;
-      
-      toast.success(`Vaga oferecida para ${name}`);
+
+      toast.success(`Vaga oferecida para ${patientName}`);
     } catch (error) {
       console.error('Error offering slot:', error);
       toast.error('Erro ao enviar oferta de vaga');
     }
   };
 
-  const handleRemove = async (id: string, name: string) => {
+  const handleRemoveFromWaitlist = async (id: string, name: string) => {
     try {
-      const { error } = await supabase
-        .from('waitlist')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('waitlist').delete().eq('id', id);
 
       if (error) throw error;
-      
+
       setWaitlist(waitlist.filter((w) => w.id !== id));
       toast.success(name + ' removido da fila');
     } catch (error) {
       console.error('Error removing from waitlist:', error);
       toast.error('Erro ao remover da fila');
+    }
+  };
+
+  const handleFillSlot = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'filled' })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast.success('Vaga marcada como preenchida');
+      loadData();
+    } catch (error) {
+      console.error('Error filling slot:', error);
+      toast.error('Erro ao preencher vaga');
     }
   };
 
@@ -245,11 +270,11 @@ export default function Waitlist() {
     <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Fila de Espera</h1>
             <p className="text-muted-foreground mt-1">
-              Pacientes aguardando por vagas de encaixe
+              Gerencie pacientes aguardando e vagas disponíveis
             </p>
           </div>
           <div className="flex gap-2">
@@ -259,14 +284,14 @@ export default function Waitlist() {
               onClick={handleRefresh}
               disabled={refreshing}
             >
-              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-              Atualizar
+              <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+              <span className="hidden sm:inline">Atualizar</span>
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Plus className="w-4 h-4" />
-                  Adicionar à fila
+                  <span className="hidden sm:inline">Adicionar à fila</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -334,54 +359,6 @@ export default function Waitlist() {
           </div>
         </div>
 
-        {/* Explicação da fila de espera */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
-              Como funciona a Fila de Espera?
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-primary">1</span>
-              </div>
-              <div>
-                <p className="font-medium">Pacientes aguardando vagas</p>
-                <p className="text-muted-foreground">Adicione pacientes que querem consulta mas não encontraram horário disponível.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-primary">2</span>
-              </div>
-              <div>
-                <p className="font-medium">Prioridade automática</p>
-                <p className="text-muted-foreground">Pacientes são ordenados por ordem de entrada. O primeiro da fila tem prioridade.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-primary">3</span>
-              </div>
-              <div>
-                <p className="font-medium">Oferecer vaga</p>
-                <p className="text-muted-foreground">Quando uma consulta é cancelada, clique em "Oferecer para fila" no Painel do Dia para notificar os pacientes da fila via WhatsApp.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-              <div>
-                <p className="font-medium">Preenchimento</p>
-                <p className="text-muted-foreground">O paciente responde via WhatsApp confirmando interesse e a vaga é preenchida!</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-3">
           <Card>
@@ -391,151 +368,305 @@ export default function Waitlist() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{waitlist.length}</p>
-                <p className="text-sm text-muted-foreground">Total na fila</p>
+                <p className="text-sm text-muted-foreground">Na fila de espera</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{replacements.length}</p>
+                <p className="text-sm text-muted-foreground">Vagas disponíveis</p>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
               <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-success" />
+                <CheckCircle2 className="w-6 h-6 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{activeCount}</p>
-                <p className="text-sm text-muted-foreground">Ativos</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-accent" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{waitlist.length - activeCount}</p>
-                <p className="text-sm text-muted-foreground">Inativos</p>
+                <p className="text-2xl font-bold">
+                  {replacements.filter((r) => r.status === 'in_replacement').length}
+                </p>
+                <p className="text-sm text-muted-foreground">Em reposição ativa</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Waitlist table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pacientes na fila</CardTitle>
-            <CardDescription>
-              Ordenados por prioridade de entrada
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold w-12">#</TableHead>
-                  <TableHead className="font-semibold">Paciente</TableHead>
-                  <TableHead className="font-semibold">Preferência</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">Na fila desde</TableHead>
-                  <TableHead className="font-semibold text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {waitlist.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                      Nenhum paciente na fila de espera.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  waitlist.map((entry) => (
-                    <TableRow key={entry.id} className={!entry.is_active ? 'opacity-50' : ''}>
-                      <TableCell>
-                        <span className="font-mono text-sm text-muted-foreground">
-                          {entry.priority}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-accent">
-                              {(entry.patient?.name || 'P').charAt(0)}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{entry.patient?.name || 'Paciente'}</p>
-                            <p className="text-xs text-muted-foreground">{entry.patient?.whatsapp || ''}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {entry.preferred_date && (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Calendar className="w-3 h-3 text-muted-foreground" />
-                              <span>{format(new Date(entry.preferred_date), "dd 'de' MMM", { locale: ptBR })}</span>
-                            </div>
-                          )}
-                          {(entry.preferred_time_start || entry.preferred_time_end) && (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              <span>
-                                {entry.preferred_time_start || '?'} - {entry.preferred_time_end || '?'}
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="waitlist" className="gap-2">
+              <Users className="w-4 h-4" />
+              Pacientes na fila
+              {waitlist.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {waitlist.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="replacements" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Vagas/Reposições
+              {replacements.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {replacements.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Waitlist Tab */}
+          <TabsContent value="waitlist">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pacientes aguardando vagas</CardTitle>
+                <CardDescription>
+                  Ordenados por prioridade de entrada
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold w-12">#</TableHead>
+                        <TableHead className="font-semibold">Paciente</TableHead>
+                        <TableHead className="font-semibold">Preferência</TableHead>
+                        <TableHead className="font-semibold">Na fila desde</TableHead>
+                        <TableHead className="font-semibold text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {waitlist.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                            Nenhum paciente na fila de espera.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        waitlist.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell>
+                              <span className="font-mono text-sm text-muted-foreground">
+                                {entry.priority}
                               </span>
-                            </div>
-                          )}
-                          {!entry.preferred_date && !entry.preferred_time_start && (
-                            <span className="text-sm text-muted-foreground">Qualquer horário</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            entry.is_active
-                              ? 'border-success/50 bg-success/10 text-success'
-                              : 'border-muted-foreground/30'
-                          }
-                        >
-                          {entry.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {entry.created_at && format(new Date(entry.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                              onClick={() => handleOfferSlot(entry.id, entry.patient?.name || 'Paciente', entry.patient?.whatsapp)}
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              Oferecer vaga
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleRemove(entry.id, entry.patient?.name || 'Paciente')}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Remover da fila
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center">
+                                  <span className="text-sm font-medium text-accent">
+                                    {(entry.patient?.name || 'P').charAt(0)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium">{entry.patient?.name || 'Paciente'}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {entry.patient?.whatsapp || ''}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {entry.preferred_date && (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                                    <span>
+                                      {format(new Date(entry.preferred_date), "dd 'de' MMM", {
+                                        locale: ptBR,
+                                      })}
+                                    </span>
+                                  </div>
+                                )}
+                                {(entry.preferred_time_start || entry.preferred_time_end) && (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Clock className="w-3 h-3 text-muted-foreground" />
+                                    <span>
+                                      {entry.preferred_time_start || '?'} -{' '}
+                                      {entry.preferred_time_end || '?'}
+                                    </span>
+                                  </div>
+                                )}
+                                {!entry.preferred_date && !entry.preferred_time_start && (
+                                  <span className="text-sm text-muted-foreground">
+                                    Qualquer horário
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {entry.created_at &&
+                                  format(new Date(entry.created_at), "dd/MM 'às' HH:mm", {
+                                    locale: ptBR,
+                                  })}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleOfferSlot(
+                                        entry.patient?.name || 'Paciente',
+                                        entry.patient?.whatsapp
+                                      )
+                                    }
+                                  >
+                                    <Send className="w-4 h-4 mr-2" />
+                                    Oferecer vaga
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleRemoveFromWaitlist(
+                                        entry.id,
+                                        entry.patient?.name || 'Paciente'
+                                      )
+                                    }
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Remover da fila
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Replacements Tab */}
+          <TabsContent value="replacements">
+            <Card>
+              <CardHeader>
+                <CardTitle>Vagas disponíveis para reposição</CardTitle>
+                <CardDescription>
+                  Consultas canceladas ou em reposição que podem ser preenchidas
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Data/Hora</TableHead>
+                        <TableHead className="font-semibold">Paciente original</TableHead>
+                        <TableHead className="font-semibold">Profissional</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {replacements.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                            Nenhuma vaga disponível para reposição.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        replacements.map((slot) => (
+                          <TableRow key={slot.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium">
+                                    {format(new Date(slot.scheduled_at), "dd/MM/yyyy", {
+                                      locale: ptBR,
+                                    })}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {format(new Date(slot.scheduled_at), "HH:mm", { locale: ptBR })}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <p className="font-medium">{slot.patient_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {slot.patient_phone || '-'}
+                              </p>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">
+                                {slot.professional_name || 'Não especificado'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  slot.status === 'in_replacement'
+                                    ? 'border-warning/50 bg-warning/10 text-warning'
+                                    : 'border-destructive/50 bg-destructive/10 text-destructive'
+                                }
+                              >
+                                {slot.status === 'in_replacement' ? 'Em reposição' : 'Cancelado'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  {waitlist.slice(0, 3).map((entry) => (
+                                    <DropdownMenuItem
+                                      key={entry.id}
+                                      onClick={() =>
+                                        handleOfferSlot(
+                                          entry.patient?.name || 'Paciente',
+                                          entry.patient?.whatsapp,
+                                          slot.scheduled_at
+                                        )
+                                      }
+                                    >
+                                      <Send className="w-4 h-4 mr-2" />
+                                      Oferecer para {entry.patient?.name?.split(' ')[0]}
+                                    </DropdownMenuItem>
+                                  ))}
+                                  {waitlist.length === 0 && (
+                                    <DropdownMenuItem disabled>
+                                      <Users className="w-4 h-4 mr-2" />
+                                      Fila vazia
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => handleFillSlot(slot.id)}>
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    Marcar como preenchido
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
