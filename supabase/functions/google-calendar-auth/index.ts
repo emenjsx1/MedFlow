@@ -85,25 +85,36 @@ Deno.serve(async (req) => {
       // Calculate token expiration
       const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString()
 
-      // Save tokens and calendar info to database
-      const { error: upsertError } = await supabase
-        .from('tenant_settings')
+      // Save tokens to tenant_secrets table (secure storage)
+      const { error: secretsError } = await supabase
+        .from('tenant_secrets')
         .upsert({
           tenant_id: tenantId,
-          google_calendar_connected: true,
-          google_calendar_id: primaryCalendar?.id || 'primary',
           google_access_token: tokens.access_token,
           google_refresh_token: tokens.refresh_token,
           google_token_expires_at: expiresAt,
         }, { onConflict: 'tenant_id' })
 
-      if (upsertError) {
-        console.error('Error saving tokens:', upsertError)
+      if (secretsError) {
+        console.error('Error saving tokens to secrets:', secretsError)
         const errorUrl = `${baseUrl}?google_error=${encodeURIComponent('Erro ao salvar tokens')}`
         return new Response(null, {
           status: 302,
           headers: { ...corsHeaders, 'Location': errorUrl }
         })
+      }
+
+      // Update tenant_settings with calendar info (non-sensitive)
+      const { error: settingsError } = await supabase
+        .from('tenant_settings')
+        .upsert({
+          tenant_id: tenantId,
+          google_calendar_connected: true,
+          google_calendar_id: primaryCalendar?.id || 'primary',
+        }, { onConflict: 'tenant_id' })
+
+      if (settingsError) {
+        console.error('Error saving calendar settings:', settingsError)
       }
 
       console.log('Calendar connected for tenant:', tenantId, 'Calendar:', primaryCalendar?.summary)
