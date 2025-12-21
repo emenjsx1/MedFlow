@@ -18,9 +18,12 @@ interface TenantSettings {
   agent_business_context: string | null
   agent_faqs: { question: string; answer: string }[] | null
   use_custom_openai: boolean | null
-  openai_api_key: string | null
   google_calendar_connected: boolean | null
   google_calendar_id: string | null
+}
+
+interface TenantSecrets {
+  openai_api_key: string | null
   google_access_token: string | null
   google_refresh_token: string | null
   google_token_expires_at: string | null
@@ -214,6 +217,20 @@ Deno.serve(async (req) => {
 
     const tenantSettings = settings as TenantSettings
 
+    // Get tenant secrets (Google tokens, OpenAI key) - stored separately for security
+    const { data: secretsData } = await supabase
+      .from('tenant_secrets')
+      .select('openai_api_key, google_access_token, google_refresh_token, google_token_expires_at')
+      .eq('tenant_id', tenantId)
+      .maybeSingle()
+
+    const tenantSecrets: TenantSecrets = secretsData || {
+      openai_api_key: null,
+      google_access_token: null,
+      google_refresh_token: null,
+      google_token_expires_at: null,
+    }
+
     // Find or create patient early so messages list can show a name
     let patientId: string | null = null
     const placeholderName = 'Sem nome'
@@ -279,7 +296,49 @@ Deno.serve(async (req) => {
     
     let availableSlots: SlotInfo[] = []
     
+    // Helper function to get valid access token
+    const getValidAccessToken = async (): Promise<string | null> => {
+      if (!tenantSecrets.google_access_token) return null
+      
+      let accessToken = tenantSecrets.google_access_token
+      
+      // Check if token is expired and refresh if needed
+      if (tenantSecrets.google_token_expires_at && tenantSecrets.google_refresh_token) {
+        const expiresAt = new Date(tenantSecrets.google_token_expires_at)
+        const now = new Date()
+        
+        if (now >= expiresAt && GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+          const refreshed = await refreshGoogleToken(
+            tenantSecrets.google_refresh_token,
+            GOOGLE_CLIENT_ID,
+            GOOGLE_CLIENT_SECRET
+          )
+          
+          if (refreshed) {
+            accessToken = refreshed.access_token
+            const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+            
+            // Update token in tenant_secrets table
+            await supabase
+              .from('tenant_secrets')
+              .update({
+                google_access_token: accessToken,
+                google_token_expires_at: newExpiresAt,
+              })
+              .eq('tenant_id', tenantId)
+            
+            console.log('Token refreshed successfully')
+          }
+        }
+      }
+      
+      return accessToken
+    }
+    
     if (hasProfessionals) {
+      // Get valid access token once for all professionals
+      const accessToken = tenantSettings.google_calendar_connected ? await getValidAccessToken() : null
+      
       // Generate slots for each professional
       for (const prof of professionals!) {
         // Get appointments for this professional
@@ -304,41 +363,7 @@ Deno.serve(async (req) => {
 
         // Fetch Google Calendar events for this professional or main calendar
         const calendarId = prof.google_calendar_id || tenantSettings.google_calendar_id
-        if (tenantSettings.google_calendar_connected && 
-            calendarId && 
-            tenantSettings.google_access_token &&
-            GOOGLE_CLIENT_ID && 
-            GOOGLE_CLIENT_SECRET) {
-          
-          let accessToken = tenantSettings.google_access_token
-          
-          // Check if token is expired and refresh if needed
-          if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
-            const expiresAt = new Date(tenantSettings.google_token_expires_at)
-            const now = new Date()
-            
-            if (now >= expiresAt) {
-              const refreshed = await refreshGoogleToken(
-                tenantSettings.google_refresh_token,
-                GOOGLE_CLIENT_ID,
-                GOOGLE_CLIENT_SECRET
-              )
-              
-              if (refreshed) {
-                accessToken = refreshed.access_token
-                const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
-                
-                await supabase
-                  .from('tenant_settings')
-                  .update({
-                    google_access_token: accessToken,
-                    google_token_expires_at: newExpiresAt,
-                  })
-                  .eq('tenant_id', tenantId)
-              }
-            }
-          }
-          
+        if (tenantSettings.google_calendar_connected && calendarId && accessToken) {
           const calendarEvents = await fetchGoogleCalendarEvents(
             accessToken,
             calendarId,
@@ -402,50 +427,26 @@ Deno.serve(async (req) => {
 
       if (tenantSettings.google_calendar_connected && 
           tenantSettings.google_calendar_id && 
-          tenantSettings.google_access_token &&
+          tenantSecrets.google_access_token &&
           GOOGLE_CLIENT_ID && 
           GOOGLE_CLIENT_SECRET) {
         
-        let accessToken = tenantSettings.google_access_token
+        const accessToken = await getValidAccessToken()
         
-        if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
-          const expiresAt = new Date(tenantSettings.google_token_expires_at)
-          const now = new Date()
+        if (accessToken) {
+          const calendarEvents = await fetchGoogleCalendarEvents(
+            accessToken,
+            tenantSettings.google_calendar_id,
+            today.toISOString(),
+            nextWeek.toISOString()
+          )
           
-          if (now >= expiresAt) {
-            const refreshed = await refreshGoogleToken(
-              tenantSettings.google_refresh_token,
-              GOOGLE_CLIENT_ID,
-              GOOGLE_CLIENT_SECRET
-            )
-            
-            if (refreshed) {
-              accessToken = refreshed.access_token
-              const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
-              
-              await supabase
-                .from('tenant_settings')
-                .update({
-                  google_access_token: accessToken,
-                  google_token_expires_at: newExpiresAt,
-                })
-                .eq('tenant_id', tenantId)
-            }
+          for (const event of calendarEvents) {
+            bookedRanges.push({
+              start: new Date(event.start),
+              end: new Date(event.end),
+            })
           }
-        }
-        
-        const calendarEvents = await fetchGoogleCalendarEvents(
-          accessToken,
-          tenantSettings.google_calendar_id,
-          today.toISOString(),
-          nextWeek.toISOString()
-        )
-        
-        for (const event of calendarEvents) {
-          bookedRanges.push({
-            start: new Date(event.start),
-            end: new Date(event.end),
-          })
         }
       }
 
@@ -548,9 +549,9 @@ Responda de forma natural e amigável em português brasileiro.`
     let useGemini = true
     let apiKey = GOOGLE_GEMINI_API_KEY
     
-    if (tenantSettings.use_custom_openai && tenantSettings.openai_api_key) {
+    if (tenantSettings.use_custom_openai && tenantSecrets.openai_api_key) {
       useGemini = false
-      apiKey = tenantSettings.openai_api_key
+      apiKey = tenantSecrets.openai_api_key
     }
 
     if (!apiKey) {
@@ -723,63 +724,34 @@ Responda de forma natural e amigável em português brasileiro.`
       
       if (tenantSettings.google_calendar_connected && 
           calendarIdToUse && 
-          tenantSettings.google_access_token &&
+          tenantSecrets.google_access_token &&
           GOOGLE_CLIENT_ID && 
           GOOGLE_CLIENT_SECRET) {
         
-        let accessToken = tenantSettings.google_access_token
+        const accessToken = await getValidAccessToken()
         
-        // Check if token is expired and refresh if needed
-        if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
-          const expiresAt = new Date(tenantSettings.google_token_expires_at)
-          const now = new Date()
+        if (accessToken) {
+          // Calculate end time
+          const startDate = new Date(`${date}T${time}:00`)
+          const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+          const endTime = endDate.toTimeString().slice(0, 5)
           
-          if (now >= expiresAt) {
-            console.log('Access token expired, refreshing...')
-            const refreshed = await refreshGoogleToken(
-              tenantSettings.google_refresh_token,
-              GOOGLE_CLIENT_ID,
-              GOOGLE_CLIENT_SECRET
-            )
-            
-            if (refreshed) {
-              accessToken = refreshed.access_token
-              const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
-              
-              // Update token in database
-              await supabase
-                .from('tenant_settings')
-                .update({
-                  google_access_token: accessToken,
-                  google_token_expires_at: newExpiresAt,
-                })
-                .eq('tenant_id', tenantId)
-              
-              console.log('Token refreshed successfully')
+          const calendarEvent = await createGoogleCalendarEvent(
+            accessToken,
+            calendarIdToUse,
+            {
+              summary: `Consulta: ${name}${selectedProfessional ? ` - ${selectedProfessional.name}` : ''}`,
+              description: `Paciente: ${name}\nTelefone: ${patientPhone}${selectedProfessional ? `\nProfissional: ${selectedProfessional.name}` : ''}\n\nAgendado via WhatsApp`,
+              start: `${date}T${time}:00`,
+              end: `${date}T${endTime}:00`,
+              attendeePhone: patientPhone,
             }
+          )
+          
+          if (calendarEvent) {
+            calendarEventId = calendarEvent.id
+            console.log('Calendar event created:', calendarEventId)
           }
-        }
-        
-        // Calculate end time
-        const startDate = new Date(`${date}T${time}:00`)
-        const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-        const endTime = endDate.toTimeString().slice(0, 5)
-        
-        const calendarEvent = await createGoogleCalendarEvent(
-          accessToken,
-          calendarIdToUse,
-          {
-            summary: `Consulta: ${name}${selectedProfessional ? ` - ${selectedProfessional.name}` : ''}`,
-            description: `Paciente: ${name}\nTelefone: ${patientPhone}${selectedProfessional ? `\nProfissional: ${selectedProfessional.name}` : ''}\n\nAgendado via WhatsApp`,
-            start: `${date}T${time}:00`,
-            end: `${date}T${endTime}:00`,
-            attendeePhone: patientPhone,
-          }
-        )
-        
-        if (calendarEvent) {
-          calendarEventId = calendarEvent.id
-          console.log('Calendar event created:', calendarEventId)
         }
       } else {
         console.log('Google Calendar not connected or missing credentials')
