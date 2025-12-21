@@ -636,6 +636,48 @@ export default function Settings() {
 
                 <Separator />
 
+                {/* Timezone - Moved to top for visibility */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Fuso Horário
+                  </h4>
+                  <div className="space-y-2">
+                    <Label>Selecione seu fuso horário</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={timezone}
+                      onChange={(e) => setTimezone(e.target.value)}
+                    >
+                      <optgroup label="Brasil">
+                        <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+                        <option value="America/Manaus">Manaus (GMT-4)</option>
+                        <option value="America/Rio_Branco">Rio Branco (GMT-5)</option>
+                        <option value="America/Noronha">Fernando de Noronha (GMT-2)</option>
+                      </optgroup>
+                      <optgroup label="África">
+                        <option value="Africa/Maputo">Maputo (GMT+2)</option>
+                        <option value="Africa/Luanda">Luanda (GMT+1)</option>
+                        <option value="Africa/Johannesburg">Joanesburgo (GMT+2)</option>
+                      </optgroup>
+                      <optgroup label="Europa">
+                        <option value="Europe/Lisbon">Lisboa (GMT+0)</option>
+                        <option value="Europe/Madrid">Madrid (GMT+1)</option>
+                      </optgroup>
+                      <optgroup label="Outros">
+                        <option value="America/New_York">Nova York (GMT-5)</option>
+                        <option value="America/Los_Angeles">Los Angeles (GMT-8)</option>
+                        <option value="UTC">UTC (GMT+0)</option>
+                      </optgroup>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Este fuso horário será usado para exibir datas e horários em todo o sistema
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
                 <div className="space-y-4">
                   <h4 className="font-medium flex items-center gap-2">
                     <Clock className="w-4 h-4" />
@@ -695,48 +737,6 @@ export default function Settings() {
                         </Button>
                       ))}
                     </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Timezone */}
-                <div className="space-y-4">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    Fuso Horário
-                  </h4>
-                  <div className="space-y-2">
-                    <Label>Selecione seu fuso horário</Label>
-                    <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      value={timezone}
-                      onChange={(e) => setTimezone(e.target.value)}
-                    >
-                      <optgroup label="Brasil">
-                        <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
-                        <option value="America/Manaus">Manaus (GMT-4)</option>
-                        <option value="America/Rio_Branco">Rio Branco (GMT-5)</option>
-                        <option value="America/Noronha">Fernando de Noronha (GMT-2)</option>
-                      </optgroup>
-                      <optgroup label="África">
-                        <option value="Africa/Maputo">Maputo (GMT+2)</option>
-                        <option value="Africa/Luanda">Luanda (GMT+1)</option>
-                        <option value="Africa/Johannesburg">Joanesburgo (GMT+2)</option>
-                      </optgroup>
-                      <optgroup label="Europa">
-                        <option value="Europe/Lisbon">Lisboa (GMT+0)</option>
-                        <option value="Europe/Madrid">Madrid (GMT+1)</option>
-                      </optgroup>
-                      <optgroup label="Outros">
-                        <option value="America/New_York">Nova York (GMT-5)</option>
-                        <option value="America/Los_Angeles">Los Angeles (GMT-8)</option>
-                        <option value="UTC">UTC (GMT+0)</option>
-                      </optgroup>
-                    </select>
-                    <p className="text-xs text-muted-foreground">
-                      Este fuso horário será usado para exibir datas e horários em todo o sistema
-                    </p>
                   </div>
                 </div>
 
