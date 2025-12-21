@@ -123,6 +123,28 @@ const faqs = [{
   question: "Quantos profissionais posso cadastrar?",
   answer: "Ilimitados! Cada profissional tem sua própria agenda, horários de trabalho e pode ter seu próprio Google Calendar sincronizado."
 }];
+function VturbPlayer() {
+  useEffect(() => {
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src*="converteai.net"]');
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.src = "https://scripts.converteai.net/06360127-0c05-416d-8bd8-3f5e34305802/players/69487a1e798d3e9d452d5a4b/v4/player.js";
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  return (
+    <div 
+      id="vturb-player-container"
+      dangerouslySetInnerHTML={{
+        __html: `<vturb-smartplayer id="vid-69487a1e798d3e9d452d5a4b" style="display: block; margin: 0 auto; width: 100%;"></vturb-smartplayer>`
+      }}
+    />
+  );
+}
+
 function CountdownTimer() {
   const [timeLeft, setTimeLeft] = useState({
     hours: 0,
@@ -411,19 +433,7 @@ export default function LandingPage() {
         <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
           <div className="max-w-4xl mx-auto">
             <div className="rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
-              <div 
-                dangerouslySetInnerHTML={{
-                  __html: `
-                    <vturb-smartplayer id="vid-69487a1e798d3e9d452d5a4b" style="display: block; margin: 0 auto; width: 100%;"></vturb-smartplayer>
-                    <script type="text/javascript">
-                      var s=document.createElement("script");
-                      s.src="https://scripts.converteai.net/06360127-0c05-416d-8bd8-3f5e34305802/players/69487a1e798d3e9d452d5a4b/v4/player.js";
-                      s.async=!0;
-                      document.head.appendChild(s);
-                    </script>
-                  `
-                }}
-              />
+              <VturbPlayer />
             </div>
 
             <div className="flex justify-center mt-4 sm:mt-6">
@@ -435,6 +445,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
 
       {/* How it Works */}
       <section className="py-10 sm:py-16 bg-muted/30">
