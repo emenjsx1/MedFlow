@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   Loader2,
   RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -251,7 +252,155 @@ export default function Messages() {
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* Mobile: Show either conversation list OR chat, not both */}
+        <div className="lg:hidden">
+          {selectedConversation ? (
+            /* Mobile Chat View - Full Screen */
+            <Card className="flex flex-col h-[calc(100vh-280px)]">
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedPatientId(null)}
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-medium text-primary">
+                        {selectedConversation.patientName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">{selectedConversation.patientName}</CardTitle>
+                      <CardDescription className="text-xs">{selectedConversation.patientPhone}</CardDescription>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-3">
+                    {selectedConversation.messages
+                      .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
+                      .map((msg) => {
+                        const StatusIcon = statusConfig[msg.status || 'sent'].icon;
+                        const isOutbound = msg.direction === 'outbound';
+
+                        return (
+                          <div
+                            key={msg.id}
+                            className={cn('flex', isOutbound ? 'justify-end' : 'justify-start')}
+                          >
+                            <div
+                              className={cn(
+                                'max-w-[85%] rounded-2xl px-3 py-2',
+                                isOutbound
+                                  ? 'bg-primary text-primary-foreground rounded-br-md'
+                                  : 'bg-muted rounded-bl-md'
+                              )}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
+                              <div
+                                className={cn(
+                                  'flex items-center gap-1 mt-1 text-xs',
+                                  isOutbound ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                )}
+                              >
+                                <span>{format(new Date(msg.sent_at), 'HH:mm', { locale: ptBR })}</span>
+                                {isOutbound && (
+                                  <StatusIcon className={cn('w-3 h-3', statusConfig[msg.status || 'sent'].className)} />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </ScrollArea>
+                
+                {/* Mobile Message Input */}
+                <div className="border-t border-border p-3">
+                  <div className="flex gap-2 items-end">
+                    <Textarea
+                      placeholder="Digite sua mensagem..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      className="min-h-[44px] max-h-[120px] resize-none text-sm"
+                      rows={1}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim() || sending}
+                      size="icon"
+                      className="shrink-0 h-11 w-11"
+                    >
+                      {sending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Mobile Conversation List */
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Conversas</CardTitle>
+                <div className="relative mt-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar paciente..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[calc(100vh-380px)]">
+                  {filteredConversations.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      Nenhuma conversa encontrada
+                    </div>
+                  ) : (
+                    filteredConversations.map((conv) => (
+                      <div
+                        key={conv.patientId}
+                        onClick={() => setSelectedPatientId(conv.patientId)}
+                        className="p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-base font-medium text-primary">
+                              {conv.patientName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium truncate">{conv.patientName}</p>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Desktop: Side by side layout */}
+        <div className="hidden lg:grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-1">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Conversas</CardTitle>

@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 import Logo from '@/components/Logo';
@@ -76,11 +77,14 @@ export default function DashboardLayout({ children, requireAdmin = false }: Dash
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content */}
-      <main className="lg:pl-64 pt-16 lg:pt-0">
+      <main className="lg:pl-64 pt-16 lg:pt-0 pb-20 lg:pb-0">
         <div className="p-4 md:p-6 lg:p-8">
           {children}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 }
