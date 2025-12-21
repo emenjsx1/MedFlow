@@ -1,9 +1,20 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, MessageSquare, Bell, Clock, Sparkles, Play, Headphones, ArrowRight, CheckCircle2, Users, Calendar, Bot, Shield, Zap } from "lucide-react";
+import { 
+  Check, MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, 
+  Users, Calendar, Bot, Shield, Zap, ChevronLeft, ChevronRight, Star,
+  ChevronDown
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const allFeatures = [
   "Agendamentos ilimitados",
@@ -46,42 +57,6 @@ const plans = [
   }
 ];
 
-const painPoints = [
-  {
-    icon: Clock,
-    title: "Pacientes que faltam",
-    description: "Horários vagos que geram prejuízo financeiro e bagunçam sua agenda"
-  },
-  {
-    icon: MessageSquare,
-    title: "WhatsApp fora de hora",
-    description: "Ter que responder mensagens à noite, finais de semana e feriados"
-  },
-  {
-    icon: Users,
-    title: "Equipe sobrecarregada",
-    description: "Funcionários gastando horas confirmando consultas manualmente"
-  }
-];
-
-const howItWorks = [
-  {
-    step: 1,
-    title: "Conecte seu WhatsApp",
-    description: "Em menos de 5 minutos você conecta sua conta e configura as mensagens"
-  },
-  {
-    step: 2,
-    title: "IA assume o atendimento",
-    description: "Nossa IA responde, agenda e confirma consultas automaticamente"
-  },
-  {
-    step: 3,
-    title: "Foque no que importa",
-    description: "Você atende seus pacientes enquanto a tecnologia cuida do resto"
-  }
-];
-
 const features = [
   {
     icon: Bot,
@@ -115,6 +90,186 @@ const features = [
   }
 ];
 
+const testimonials = [
+  {
+    name: "Dr. Carlos Silva",
+    role: "Dentista",
+    image: "https://randomuser.me/api/portraits/men/32.jpg",
+    text: "Reduzi as faltas em 65% no primeiro mês. A IA responde meus pacientes perfeitamente, mesmo de madrugada.",
+    rating: 5
+  },
+  {
+    name: "Dra. Ana Paula",
+    role: "Dermatologista",
+    image: "https://randomuser.me/api/portraits/women/44.jpg",
+    text: "Minha secretária agora foca no atendimento presencial. O WhatsApp automático mudou nossa rotina completamente.",
+    rating: 5
+  },
+  {
+    name: "Dr. Roberto Mendes",
+    role: "Fisioterapeuta",
+    image: "https://randomuser.me/api/portraits/men/52.jpg",
+    text: "Em 3 meses recuperei o investimento. Menos faltas = mais faturamento. Simples assim.",
+    rating: 5
+  },
+  {
+    name: "Dra. Mariana Costa",
+    role: "Psicóloga",
+    image: "https://randomuser.me/api/portraits/women/68.jpg",
+    text: "Pacientes adoram a praticidade de agendar pelo WhatsApp a qualquer hora. Recomendo para todos os colegas.",
+    rating: 5
+  }
+];
+
+const targetAudience = [
+  { icon: "🏥", title: "Clínicas médicas" },
+  { icon: "🦷", title: "Consultórios odontológicos" },
+  { icon: "💆", title: "Estéticas e spas" },
+  { icon: "🧠", title: "Psicólogos e terapeutas" },
+  { icon: "💪", title: "Fisioterapeutas" },
+  { icon: "👁️", title: "Oftalmologistas" }
+];
+
+const faqs = [
+  {
+    question: "Preciso ter conhecimento técnico para usar?",
+    answer: "Não! O AgendaClin foi feito para ser simples. Em menos de 5 minutos você conecta seu WhatsApp e começa a usar. Temos tutoriais em vídeo e suporte em português."
+  },
+  {
+    question: "Funciona com meu sistema atual?",
+    answer: "Sim! O AgendaClin funciona de forma independente e se integra com Google Calendar. Você pode continuar usando seu sistema atual enquanto aproveita nossa automação."
+  },
+  {
+    question: "Posso cancelar a qualquer momento?",
+    answer: "Sim! Não temos fidelidade. Você pode cancelar quando quiser sem multas ou taxas extras."
+  },
+  {
+    question: "A IA realmente responde bem os pacientes?",
+    answer: "Nossa IA foi treinada especificamente para atendimento em saúde. Ela entende contexto, horários, e responde de forma natural e profissional."
+  },
+  {
+    question: "E se o paciente quiser falar com uma pessoa?",
+    answer: "A IA identifica quando o paciente precisa de atendimento humano e encaminha automaticamente para você ou sua equipe."
+  },
+  {
+    question: "Quantos profissionais posso cadastrar?",
+    answer: "Ilimitados! Cada profissional tem sua própria agenda, horários de trabalho e pode ter seu próprio Google Calendar sincronizado."
+  }
+];
+
+function CountdownTimer() {
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      const diff = endOfDay.getTime() - now.getTime();
+
+      return {
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / (1000 * 60)) % 60),
+        seconds: Math.floor((diff / 1000) % 60)
+      };
+    };
+
+    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center gap-2 text-2xl md:text-3xl font-bold">
+      <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
+        {String(timeLeft.hours).padStart(2, '0')}h
+      </div>
+      <span>:</span>
+      <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
+        {String(timeLeft.minutes).padStart(2, '0')}m
+      </div>
+      <span>:</span>
+      <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
+        {String(timeLeft.seconds).padStart(2, '0')}s
+      </div>
+    </div>
+  );
+}
+
+function TestimonialCarousel() {
+  const [current, setCurrent] = useState(0);
+
+  const next = () => setCurrent((prev) => (prev + 1) % testimonials.length);
+  const prev = () => setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+
+  useEffect(() => {
+    const timer = setInterval(next, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="relative max-w-4xl mx-auto">
+      <div className="overflow-hidden">
+        <div 
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${current * 100}%)` }}
+        >
+          {testimonials.map((testimonial, index) => (
+            <div key={index} className="w-full flex-shrink-0 px-4">
+              <Card className="bg-background border-2">
+                <CardContent className="pt-8 pb-6 px-8">
+                  <div className="flex items-center gap-4 mb-6">
+                    <img 
+                      src={testimonial.image} 
+                      alt={testimonial.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-primary"
+                    />
+                    <div>
+                      <h4 className="font-semibold text-lg">{testimonial.name}</h4>
+                      <p className="text-muted-foreground">{testimonial.role}</p>
+                      <div className="flex gap-0.5 mt-1">
+                        {Array.from({ length: testimonial.rating }).map((_, i) => (
+                          <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-lg italic text-muted-foreground">"{testimonial.text}"</p>
+                </CardContent>
+              </Card>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <button 
+        onClick={prev}
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <button 
+        onClick={next}
+        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors"
+      >
+        <ChevronRight className="w-5 h-5" />
+      </button>
+
+      <div className="flex justify-center gap-2 mt-6">
+        {testimonials.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrent(index)}
+            className={`w-2.5 h-2.5 rounded-full transition-colors ${
+              current === index ? 'bg-primary' : 'bg-muted-foreground/30'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
 
@@ -134,10 +289,13 @@ export default function LandingPage() {
           <div className="flex items-center justify-between h-16">
             <Logo size="md" />
             <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={scrollToPricing}>
+              <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex">
                 Planos
               </Button>
-              <Button variant="outline" onClick={() => navigate('/login')}>
+              <Button 
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+                onClick={() => navigate('/login')}
+              >
                 Entrar
               </Button>
             </div>
@@ -146,7 +304,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-16 md:py-24 overflow-hidden">
+      <section className="py-12 md:py-20 overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <Badge variant="secondary" className="mb-6">
@@ -156,10 +314,9 @@ export default function LandingPage() {
             
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight">
               Elimine as faltas, automatize confirmações e{" "}
-              <span className="text-primary">aumente o faturamento</span> da sua clínica
+              <span className="text-primary">aumente o faturamento</span>
             </h1>
             
-            {/* Subheadline with 3 pain points */}
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
               Chega de{" "}
               <span className="font-semibold text-foreground">pacientes que não aparecem</span>,{" "}
@@ -167,18 +324,7 @@ export default function LandingPage() {
               <span className="font-semibold text-foreground">funcionários perdendo tempo com ligações</span>.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <Button size="lg" className="gap-2 text-base px-8" onClick={scrollToPricing}>
-                Quero automatizar minha clínica
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-              <Button size="lg" variant="outline" className="gap-2 text-base" onClick={() => navigate('/login')}>
-                Já tenho conta
-              </Button>
-            </div>
-
-            {/* Trust badges */}
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground mb-8">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                 <span>Sem fidelidade</span>
@@ -197,96 +343,92 @@ export default function LandingPage() {
       </section>
 
       {/* VSL Section */}
-      <section className="pb-20">
+      <section className="pb-16">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-2xl overflow-hidden shadow-2xl border">
-              <div 
-                id="vturb-embed" 
-                className="w-full h-full flex items-center justify-center"
-              >
+            <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-2xl overflow-hidden shadow-2xl border relative">
+              <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
-                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <Play className="w-8 h-8 text-primary" />
+                  <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center mx-auto mb-4 cursor-pointer hover:scale-105 transition-transform shadow-lg">
+                    <Play className="w-10 h-10 text-accent-foreground ml-1" />
                   </div>
-                  <p className="text-sm font-medium">Cole aqui o embed do VTurb</p>
-                  <p className="text-xs mt-1 opacity-60">Substitua este div pelo código do player</p>
+                  <p className="text-lg font-medium">Clique para assistir</p>
+                  <p className="text-sm mt-1 opacity-60">Veja como funciona em 2 minutos</p>
                 </div>
               </div>
+              {/* Progress bar like GestorChef */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
+                <div className="h-full bg-accent w-0"></div>
+              </div>
+            </div>
+            
+            <div className="flex justify-center mt-6">
+              <Button 
+                size="lg" 
+                className="gap-2 text-base px-8 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+                onClick={scrollToPricing}
+              >
+                Quero automatizar minha clínica
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pain Points Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              Você está cansado de...
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Esses problemas afetam milhares de clínicas todos os dias
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {painPoints.map((point, index) => (
-              <Card key={index} className="border-destructive/20 bg-destructive/5">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
-                    <point.icon className="w-6 h-6 text-destructive" />
-                  </div>
-                  <CardTitle className="text-lg">{point.title}</CardTitle>
-                  <CardDescription>{point.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* How it Works */}
-      <section className="py-20">
+      <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              Como funciona
+              100% Online e Automatizado
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Em 3 passos simples você automatiza toda sua operação
+              Acesse de qualquer lugar, a qualquer hora. Sua clínica no piloto automático.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {howItWorks.map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6">
-                  {item.step}
-                </div>
-                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                <p className="text-muted-foreground">{item.description}</p>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+                1
               </div>
-            ))}
+              <h3 className="text-xl font-semibold mb-2">Conecte seu WhatsApp</h3>
+              <p className="text-muted-foreground">Em menos de 5 minutos você conecta sua conta e configura as mensagens</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+                2
+              </div>
+              <h3 className="text-xl font-semibold mb-2">IA assume o atendimento</h3>
+              <p className="text-muted-foreground">Nossa IA responde, agenda e confirma consultas automaticamente</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+                3
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Foque no que importa</h3>
+              <p className="text-muted-foreground">Você atende seus pacientes enquanto a tecnologia cuida do resto</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Features Grid */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              Tudo o que você precisa em um só lugar
+              Funcionalidades Completas
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Funcionalidades completas para transformar sua clínica
+              Tudo o que você precisa para gerenciar sua clínica em um só lugar
             </p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {features.map((feature, index) => (
-              <Card key={index} className="bg-background">
+              <Card key={index} className="bg-background hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                     <feature.icon className="w-6 h-6 text-primary" />
@@ -300,11 +442,75 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Target Audience */}
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Para quem é o AgendaClin?
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Ideal para qualquer profissional de saúde que quer automatizar agendamentos
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
+            {targetAudience.map((item, index) => (
+              <div 
+                key={index} 
+                className="bg-background rounded-xl p-6 text-center hover:shadow-lg transition-shadow border"
+              >
+                <span className="text-4xl mb-3 block">{item.icon}</span>
+                <span className="text-sm font-medium">{item.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Carousel */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              ⭐ O Que Nossos Clientes Dizem
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Profissionais que já transformaram suas clínicas
+            </p>
+          </div>
+          
+          <TestimonialCarousel />
+        </div>
+      </section>
+
+      {/* Urgency Banner */}
+      <section className="py-12 bg-destructive text-destructive-foreground">
+        <div className="container mx-auto px-4 text-center">
+          <h3 className="text-2xl md:text-3xl font-bold mb-2">
+            🚨 OFERTA POR TEMPO LIMITADO!
+          </h3>
+          <p className="text-lg mb-6 opacity-90">
+            Preço promocional encerra em:
+          </p>
+          <CountdownTimer />
+          <Button 
+            size="lg" 
+            variant="secondary"
+            className="mt-6 gap-2 font-semibold"
+            onClick={scrollToPricing}
+          >
+            Garantir minha vaga
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </section>
+
       {/* What's Included */}
-      <section className="py-20">
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
-            O que está incluso em todos os planos
+            ✅ Incluso em todos os planos
           </h2>
           <p className="text-center text-muted-foreground mb-10 max-w-2xl mx-auto">
             Acesso completo a todas as funcionalidades, sem surpresas
@@ -321,7 +527,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-muted/30">
+      <section id="pricing" className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -335,11 +541,11 @@ export default function LandingPage() {
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
-                className={`relative ${plan.popular ? 'border-primary shadow-xl ring-2 ring-primary/20 scale-105 z-10' : ''}`}
+                className={`relative ${plan.popular ? 'border-accent shadow-xl ring-2 ring-accent/20 scale-105 z-10' : ''}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary shadow-lg">Mais Escolhido</Badge>
+                    <Badge className="bg-accent text-accent-foreground shadow-lg">Mais Escolhido</Badge>
                   </div>
                 )}
                 <CardHeader className="text-center pb-2">
@@ -360,7 +566,7 @@ export default function LandingPage() {
                     Acesso completo a todas as funcionalidades
                   </p>
                   <Button 
-                    className="w-full" 
+                    className={`w-full ${plan.popular ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}`}
                     size="lg"
                     variant={plan.popular ? "default" : "outline"}
                     onClick={() => handleSelectPlan(plan.id)}
@@ -374,8 +580,37 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Perguntas Frequentes
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Tire suas dúvidas sobre o AgendaClin
+            </p>
+          </div>
+          
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={index} value={`item-${index}`}>
+                  <AccordionTrigger className="text-left text-base font-medium">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
-      <section className="py-20 bg-primary text-primary-foreground">
+      <section className="py-16 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Sua agenda no piloto automático
@@ -386,7 +621,7 @@ export default function LandingPage() {
           <Button 
             size="lg" 
             variant="secondary"
-            className="gap-2"
+            className="gap-2 font-semibold"
             onClick={scrollToPricing}
           >
             Quero Automatizar Minha Clínica
