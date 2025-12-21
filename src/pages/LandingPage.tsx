@@ -3,18 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Check, MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, 
+  MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, 
   Users, Calendar, Bot, Shield, Zap, ChevronLeft, ChevronRight, Star,
-  ChevronDown
+  ChevronDown, Plus, Minus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 const allFeatures = [
   "Agendamentos ilimitados",
@@ -266,6 +260,31 @@ function TestimonialCarousel() {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 text-left bg-background hover:bg-muted/50 transition-colors"
+      >
+        <span className="font-medium">{question}</span>
+        {isOpen ? (
+          <Minus className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        ) : (
+          <Plus className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        )}
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 text-muted-foreground">
+          {answer}
+        </div>
+      )}
     </div>
   );
 }
@@ -592,19 +611,10 @@ export default function LandingPage() {
             </p>
           </div>
           
-          <div className="max-w-3xl mx-auto">
-            <Accordion type="single" collapsible className="w-full">
-              {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left text-base font-medium">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          <div className="max-w-3xl mx-auto space-y-3">
+            {faqs.map((faq, index) => (
+              <FAQItem key={index} question={faq.question} answer={faq.answer} />
+            ))}
           </div>
         </div>
       </section>
