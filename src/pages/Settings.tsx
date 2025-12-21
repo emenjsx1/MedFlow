@@ -229,6 +229,12 @@ export default function Settings() {
   };
 
   const handleSaveClinicSettings = async () => {
+    // Validate timezone is selected
+    if (!timezone || timezone.trim() === '') {
+      toast.error('Por favor, selecione um fuso horário antes de salvar.');
+      return;
+    }
+
     setSavingClinic(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
