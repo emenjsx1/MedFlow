@@ -43,13 +43,35 @@ export default function Dashboard() {
   const [professionals, setProfessionals] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [tenantTimezone, setTenantTimezone] = useState<string>('America/Sao_Paulo');
+  const [businessHoursStart, setBusinessHoursStart] = useState<string>('08:00');
+  const [businessHoursEnd, setBusinessHoursEnd] = useState<string>('18:00');
 
   useEffect(() => {
     if (tenantId) {
       loadAppointments();
       loadProfessionals();
+      loadTenantSettings();
     }
   }, [tenantId, selectedDate]);
+
+  const loadTenantSettings = async () => {
+    try {
+      const { data } = await supabase
+        .from('tenant_settings')
+        .select('timezone, business_hours_start, business_hours_end')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (data) {
+        setTenantTimezone(data.timezone || 'America/Sao_Paulo');
+        setBusinessHoursStart(data.business_hours_start || '08:00');
+        setBusinessHoursEnd(data.business_hours_end || '18:00');
+      }
+    } catch (error) {
+      console.error('Error loading tenant settings:', error);
+    }
+  };
 
   const loadProfessionals = async () => {
     try {
@@ -398,6 +420,9 @@ export default function Dashboard() {
         <DailyScheduleCalendar
           appointments={appointments}
           professionals={professionals}
+          businessHoursStart={businessHoursStart}
+          businessHoursEnd={businessHoursEnd}
+          timezone={tenantTimezone}
         />
 
         {/* Table */}

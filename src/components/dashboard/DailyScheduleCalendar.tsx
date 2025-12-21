@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toZonedTime } from 'date-fns-tz';
 import { cn } from '@/lib/utils';
 import { User, Clock } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -31,6 +32,7 @@ interface DailyScheduleCalendarProps {
   professionals: Professional[];
   businessHoursStart?: string;
   businessHoursEnd?: string;
+  timezone?: string;
 }
 
 const statusColors: Record<string, { bg: string; border: string; text: string }> = {
@@ -86,6 +88,7 @@ export default function DailyScheduleCalendar({
   professionals,
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
+  timezone = 'America/Sao_Paulo',
 }: DailyScheduleCalendarProps) {
   // Generate time slots
   const timeSlots = useMemo(() => {
@@ -125,9 +128,10 @@ export default function DailyScheduleCalendar({
     return grouped;
   }, [appointments, professionals]);
 
-  // Calculate position and height for an appointment
+  // Calculate position and height for an appointment - now using timezone
   const getAppointmentStyle = (apt: Appointment) => {
-    const aptTime = new Date(apt.scheduled_at);
+    // Convert to the tenant's timezone for display
+    const aptTime = toZonedTime(new Date(apt.scheduled_at), timezone);
     const aptHour = aptTime.getHours();
     const aptMinute = aptTime.getMinutes();
     
@@ -142,6 +146,12 @@ export default function DailyScheduleCalendar({
     const height = (duration / 30) * 40;
     
     return { top, height: Math.max(height, 36) }; // minimum height of 36px
+  };
+
+  // Get formatted time for display, using timezone
+  const getFormattedTime = (apt: Appointment) => {
+    const aptTime = toZonedTime(new Date(apt.scheduled_at), timezone);
+    return format(aptTime, 'HH:mm');
   };
 
   const allProfessionals = [
@@ -242,7 +252,12 @@ export default function DailyScheduleCalendar({
                   {appointmentsByProfessional[prof.id]?.map((apt) => {
                     const { top, height } = getAppointmentStyle(apt);
                     const colors = statusColors[apt.status] || statusColors.pending;
-                    const aptTime = format(new Date(apt.scheduled_at), 'HH:mm');
+                    const aptTime = getFormattedTime(apt);
+                    const aptEndTime = (() => {
+                      const startTime = toZonedTime(new Date(apt.scheduled_at), timezone);
+                      const endTime = new Date(startTime.getTime() + (apt.duration_minutes || 30) * 60000);
+                      return format(endTime, 'HH:mm');
+                    })();
 
                     return (
                       <Tooltip key={apt.id}>
@@ -262,7 +277,7 @@ export default function DailyScheduleCalendar({
                               {apt.patient_name}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {aptTime} • {apt.duration_minutes}min
+                              {aptTime} • {apt.duration_minutes || 30}min
                             </p>
                           </div>
                         </TooltipTrigger>
@@ -270,18 +285,7 @@ export default function DailyScheduleCalendar({
                           <div className="space-y-1">
                             <p className="font-medium">{apt.patient_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {format(new Date(apt.scheduled_at), "HH:mm 'às' HH:mm", {
-                                locale: ptBR,
-                              }).replace(
-                                /às.*$/,
-                                `às ${format(
-                                  new Date(
-                                    new Date(apt.scheduled_at).getTime() +
-                                      apt.duration_minutes * 60000
-                                  ),
-                                  'HH:mm'
-                                )}`
-                              )}
+                              {aptTime} às {aptEndTime}
                             </p>
                             <p className={cn('text-xs font-medium', colors.text)}>
                               {statusLabels[apt.status]}
