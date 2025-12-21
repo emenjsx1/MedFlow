@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
 
-    // Handle OAuth callback
+    // Handle OAuth callback (no auth required - this is the redirect from Google)
     if (url.searchParams.has('code')) {
       const code = url.searchParams.get('code')!
       const state = url.searchParams.get('state')!
@@ -35,8 +35,17 @@ Deno.serve(async (req) => {
 
       console.log('Processing OAuth callback for state:', state)
 
-      // State format: tenantId|returnUrl
-      const [tenantId, returnUrl] = state.split('|')
+      // State format: tenantId|returnUrl (returnUrl is the full frontend URL)
+      const pipeIndex = state.indexOf('|')
+      const tenantId = pipeIndex > 0 ? state.substring(0, pipeIndex) : state
+      const returnUrl = pipeIndex > 0 ? state.substring(pipeIndex + 1) : ''
+      
+      // Default frontend URL if returnUrl is missing or relative
+      const baseUrl = returnUrl && returnUrl.startsWith('http') 
+        ? returnUrl 
+        : 'https://agendacliin.lovable.app/settings'
+
+      console.log('Tenant ID:', tenantId, 'Return URL:', baseUrl)
 
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -52,11 +61,11 @@ Deno.serve(async (req) => {
       })
 
       const tokens = await tokenResponse.json()
-      console.log('Token exchange completed')
+      console.log('Token exchange completed, success:', !tokens.error)
 
       if (tokens.error) {
         console.error('Token error:', tokens.error, tokens.error_description)
-        const errorUrl = `${returnUrl || '/settings'}?google_error=${encodeURIComponent(tokens.error_description || tokens.error)}`
+        const errorUrl = `${baseUrl}?google_error=${encodeURIComponent(tokens.error_description || tokens.error)}`
         return new Response(null, {
           status: 302,
           headers: { ...corsHeaders, 'Location': errorUrl }
@@ -77,7 +86,7 @@ Deno.serve(async (req) => {
       const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString()
 
       // Save tokens and calendar info to database
-      await supabase
+      const { error: upsertError } = await supabase
         .from('tenant_settings')
         .upsert({
           tenant_id: tenantId,
@@ -88,10 +97,19 @@ Deno.serve(async (req) => {
           google_token_expires_at: expiresAt,
         }, { onConflict: 'tenant_id' })
 
+      if (upsertError) {
+        console.error('Error saving tokens:', upsertError)
+        const errorUrl = `${baseUrl}?google_error=${encodeURIComponent('Erro ao salvar tokens')}`
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, 'Location': errorUrl }
+        })
+      }
+
       console.log('Calendar connected for tenant:', tenantId, 'Calendar:', primaryCalendar?.summary)
 
       // Redirect back to settings with success
-      const successUrl = `${returnUrl || '/settings'}?google_success=true&calendar_name=${encodeURIComponent(primaryCalendar?.summary || 'Calendário')}`
+      const successUrl = `${baseUrl}?google_success=true&calendar_name=${encodeURIComponent(primaryCalendar?.summary || 'Calendário')}`
       return new Response(null, {
         status: 302,
         headers: { ...corsHeaders, 'Location': successUrl }
