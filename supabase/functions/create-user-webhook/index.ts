@@ -3,8 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token',
 };
+
+// Token de verificação do webhook
+const WEBHOOK_TOKEN = "agendaclin";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,42 +25,58 @@ serve(async (req) => {
       );
     }
 
+    // Verificar token de autenticação
+    const token = req.headers.get('x-webhook-token') || req.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (token !== WEBHOOK_TOKEN) {
+      console.error('Invalid or missing webhook token');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const payload = await req.json();
     console.log('Received webhook payload:', JSON.stringify(payload, null, 2));
 
-    // Extract data from payload - adjust these fields based on the actual webhook format
-    // For now, expecting: email, document (CPF/CNPJ), and optionally name
-    const { email, document, cpf, cnpj, name, full_name, nome } = payload;
+    // Verificar se é evento de pagamento confirmado
+    if (payload.event !== 'payment_confirmed') {
+      console.log('Ignoring event:', payload.event);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Event ignored', event: payload.event }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const userEmail = email;
-    const userDocument = document || cpf || cnpj;
-    const userName = name || full_name || nome || '';
+    // Extrair dados do payload no formato da plataforma de pagamento
+    // Formato: { event, order_id, customer: { name, email, document? }, amount, ... }
+    const customer = payload.customer || {};
+    const userEmail = customer.email || payload.email;
+    const userName = customer.name || payload.name || '';
+    const userDocument = customer.document || customer.cpf || customer.cnpj || payload.document || payload.cpf || payload.cnpj;
 
     if (!userEmail) {
       console.error('Missing email in payload');
       return new Response(
-        JSON.stringify({ error: 'Email is required' }),
+        JSON.stringify({ error: 'Email is required in customer data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!userDocument) {
-      console.error('Missing document (CPF/CNPJ) in payload');
-      return new Response(
-        JSON.stringify({ error: 'Document (CPF/CNPJ) is required for password' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Clean document - remove any non-numeric characters for the password
-    const cleanDocument = userDocument.replace(/\D/g, '');
-
-    if (cleanDocument.length < 6) {
-      console.error('Document too short:', cleanDocument.length);
-      return new Response(
-        JSON.stringify({ error: 'Document must have at least 6 digits' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Se não tiver documento, usar os últimos 6 dígitos do order_id + "123456" como senha temporária
+    let password: string;
+    if (userDocument) {
+      // Limpar documento - remover caracteres não numéricos
+      password = userDocument.replace(/\D/g, '');
+      if (password.length < 6) {
+        password = password.padEnd(6, '0');
+      }
+    } else {
+      // Senha temporária baseada no order_id ou timestamp
+      const orderId = payload.order_id || '';
+      const orderNumbers = orderId.replace(/\D/g, '');
+      password = orderNumbers.slice(-6).padStart(6, '0') || '123456';
+      console.log('No document provided, using temporary password based on order_id');
     }
 
     // Create Supabase admin client
@@ -88,14 +107,17 @@ serve(async (req) => {
       );
     }
 
-    // Create new user with email and document as password
+    // Create new user with email and document/temp password
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: userEmail,
-      password: cleanDocument,
-      email_confirm: true, // Auto-confirm email
+      password: password,
+      email_confirm: true,
       user_metadata: {
         full_name: userName,
-        document: cleanDocument,
+        document: userDocument || null,
+        order_id: payload.order_id,
+        amount: payload.amount,
+        payment_method: payload.payment_method,
         created_via: 'payment_webhook'
       }
     });
@@ -108,7 +130,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('User created successfully:', newUser.user?.id);
+    console.log('User created successfully:', newUser.user?.id, 'Email:', userEmail);
 
     return new Response(
       JSON.stringify({ 
