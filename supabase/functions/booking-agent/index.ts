@@ -20,6 +20,9 @@ interface TenantSettings {
   use_custom_openai: boolean | null
   google_calendar_connected: boolean | null
   google_calendar_id: string | null
+  timezone: string | null
+  notify_owner_on_booking: boolean | null
+  notification_emails: string[] | null
 }
 
 interface TenantSecrets {
@@ -170,6 +173,104 @@ async function createGoogleCalendarEvent(
   } catch (error) {
     console.error('Error creating calendar event:', error)
     return null
+  }
+}
+
+// Send email notification for new appointments
+async function sendAppointmentEmailNotification(
+  settings: TenantSettings,
+  ownerEmail: string | null,
+  appointment: {
+    patient_name: string
+    patient_phone: string
+    scheduled_at: string
+    professional_name: string | null
+  }
+): Promise<void> {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+  
+  if (!RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not configured, skipping email notification')
+    return
+  }
+
+  // Build email list
+  const emailList: string[] = []
+  
+  if (settings.notify_owner_on_booking !== false && ownerEmail) {
+    emailList.push(ownerEmail)
+  }
+  
+  if (settings.notification_emails && settings.notification_emails.length > 0) {
+    emailList.push(...settings.notification_emails)
+  }
+  
+  if (emailList.length === 0) {
+    console.log('No emails configured for notifications')
+    return
+  }
+
+  // Format date/time based on timezone
+  const timezone = settings.timezone || 'America/Sao_Paulo'
+  const scheduledDate = new Date(appointment.scheduled_at)
+  const formattedDate = scheduledDate.toLocaleDateString('pt-BR', { 
+    timeZone: timezone,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+  const formattedTime = scheduledDate.toLocaleTimeString('pt-BR', { 
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+
+  const clinicName = settings.clinic_name || 'Sua Clínica'
+  const professionalText = appointment.professional_name 
+    ? `<p><strong>Profissional:</strong> ${appointment.professional_name}</p>` 
+    : ''
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${clinicName} <onboarding@resend.dev>`,
+        to: emailList,
+        subject: `📅 Novo Agendamento - ${appointment.patient_name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Novo Agendamento Criado</h2>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Paciente:</strong> ${appointment.patient_name}</p>
+              <p><strong>Telefone:</strong> ${appointment.patient_phone}</p>
+              ${professionalText}
+              <p><strong>Data:</strong> ${formattedDate}</p>
+              <p><strong>Horário:</strong> ${formattedTime}</p>
+            </div>
+            <p style="color: #6b7280; font-size: 14px;">
+              Este agendamento foi criado via WhatsApp pelo agente de IA.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="color: #9ca3af; font-size: 12px;">
+              ${clinicName} - Sistema de Agendamento Inteligente
+            </p>
+          </div>
+        `,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('Email notification failed:', await response.text())
+    } else {
+      console.log('Email notification sent to:', emailList.join(', '))
+    }
+  } catch (error) {
+    console.error('Error sending email notification:', error)
   }
 }
 
@@ -862,6 +963,26 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
       if (!appointmentError && appointment) {
         appointmentCreated = appointment
         console.log('Appointment created successfully:', appointment.id, 'for professional:', selectedProfessional?.name)
+        
+        // Send email notification
+        // Get owner email from profiles table
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('tenant_id', tenantId)
+          .limit(1)
+          .maybeSingle()
+        
+        await sendAppointmentEmailNotification(
+          tenantSettings,
+          ownerProfile?.email || null,
+          {
+            patient_name: name,
+            patient_phone: patientPhone,
+            scheduled_at: scheduledAt,
+            professional_name: selectedProfessional?.name || null,
+          }
+        )
       } else {
         console.error('Appointment creation error:', appointmentError)
       }
