@@ -36,16 +36,34 @@ export default function Dashboard() {
   const { tenantId } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [professionalFilter, setProfessionalFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [professionals, setProfessionals] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (tenantId) {
       loadAppointments();
+      loadProfessionals();
     }
   }, [tenantId, selectedDate]);
+
+  const loadProfessionals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('professionals')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setProfessionals(data || []);
+    } catch (error) {
+      console.error('Error loading professionals:', error);
+    }
+  };
 
   const loadAppointments = async () => {
     try {
@@ -93,8 +111,9 @@ export default function Dashboard() {
   // Filter appointments
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesStatus = statusFilter === 'all' || appointment.status === statusFilter;
+    const matchesProfessional = professionalFilter === 'all' || appointment.professional_id === professionalFilter;
     const matchesSearch = appointment.patient_name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesProfessional && matchesSearch;
   });
 
   const handleAction = async (id: string, action: string) => {
@@ -344,6 +363,23 @@ export default function Dashboard() {
               <SelectItem value="in_replacement">Em reposição</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Professional filter */}
+          {professionals.length > 0 && (
+            <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os profissionais</SelectItem>
+                {professionals.map((prof) => (
+                  <SelectItem key={prof.id} value={prof.id}>
+                    {prof.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Search */}
           <div className="relative flex-1 max-w-xs">
