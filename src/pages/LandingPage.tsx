@@ -2,179 +2,140 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, 
-  Users, Calendar, Bot, Shield, Zap, ChevronLeft, ChevronRight, Star,
-  ChevronDown, Plus, Minus
-} from "lucide-react";
+import { MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, Users, Calendar, Bot, Shield, Zap, ChevronLeft, ChevronRight, Star, ChevronDown, Plus, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
-
-const allFeatures = [
-  "Agendamentos ilimitados",
-  "WhatsApp integrado",
-  "Lembretes automáticos (1h e 10min antes)",
-  "Suporte 24/7 automatizado via IA",
-  "Fila de espera inteligente",
-  "Relatórios e métricas",
-  "Gestão de pacientes",
-  "Integrações com Google Calendar"
-];
-
-const plans = [
-  {
-    id: "monthly",
-    name: "Mensal",
-    price: 47,
-    interval: "mês",
-    description: "Pagamento mensal",
-    features: allFeatures
-  },
-  {
-    id: "quarterly",
-    name: "Trimestral",
-    price: 127,
-    interval: "trimestre",
-    savings: "Economize 10%",
-    popular: true,
-    description: "3 meses de acesso",
-    features: allFeatures
-  },
-  {
-    id: "annual",
-    name: "Anual",
-    price: 470,
-    interval: "ano",
-    savings: "Economize 17%",
-    description: "12 meses de acesso",
-    features: allFeatures
-  }
-];
-
-const features = [
-  {
-    icon: Bot,
-    title: "Atendimento 24/7 por IA",
-    description: "Responda pacientes a qualquer hora, mesmo enquanto você dorme"
-  },
-  {
-    icon: Bell,
-    title: "Lembretes automáticos",
-    description: "Reduza faltas em até 70% com lembretes inteligentes"
-  },
-  {
-    icon: Calendar,
-    title: "Agenda inteligente",
-    description: "Múltiplos profissionais com agendas independentes"
-  },
-  {
-    icon: Users,
-    title: "Fila de espera",
-    description: "Preencha horários vagos automaticamente"
-  },
-  {
-    icon: Shield,
-    title: "Google Calendar",
-    description: "Sincronização em tempo real com sua agenda"
-  },
-  {
-    icon: Zap,
-    title: "Relatórios",
-    description: "Métricas e insights sobre sua clínica"
-  }
-];
-
-const testimonials = [
-  {
-    name: "Dr. Carlos Silva",
-    role: "Dentista",
-    image: "https://randomuser.me/api/portraits/men/32.jpg",
-    text: "Reduzi as faltas em 65% no primeiro mês. A IA responde meus pacientes perfeitamente, mesmo de madrugada.",
-    rating: 5
-  },
-  {
-    name: "Dra. Ana Paula",
-    role: "Dermatologista",
-    image: "https://randomuser.me/api/portraits/women/44.jpg",
-    text: "Minha secretária agora foca no atendimento presencial. O WhatsApp automático mudou nossa rotina completamente.",
-    rating: 5
-  },
-  {
-    name: "Dr. Roberto Mendes",
-    role: "Fisioterapeuta",
-    image: "https://randomuser.me/api/portraits/men/52.jpg",
-    text: "Em 3 meses recuperei o investimento. Menos faltas = mais faturamento. Simples assim.",
-    rating: 5
-  },
-  {
-    name: "Dra. Mariana Costa",
-    role: "Psicóloga",
-    image: "https://randomuser.me/api/portraits/women/68.jpg",
-    text: "Pacientes adoram a praticidade de agendar pelo WhatsApp a qualquer hora. Recomendo para todos os colegas.",
-    rating: 5
-  }
-];
-
-const targetAudience = [
-  { title: "Clínicas médicas" },
-  { title: "Consultórios odontológicos" },
-  { title: "Estéticas e spas" },
-  { title: "Psicólogos e terapeutas" },
-  { title: "Fisioterapeutas" },
-  { title: "Oftalmologistas" }
-];
-
-const faqs = [
-  {
-    question: "Preciso ter conhecimento técnico para usar?",
-    answer: "Não! O AgendaClin foi feito para ser simples. Em menos de 5 minutos você conecta seu WhatsApp e começa a usar. Temos tutoriais em vídeo e suporte em português."
-  },
-  {
-    question: "Funciona com meu sistema atual?",
-    answer: "Sim! O AgendaClin funciona de forma independente e se integra com Google Calendar. Você pode continuar usando seu sistema atual enquanto aproveita nossa automação."
-  },
-  {
-    question: "Posso cancelar a qualquer momento?",
-    answer: "Sim! Não temos fidelidade. Você pode cancelar quando quiser sem multas ou taxas extras."
-  },
-  {
-    question: "A IA realmente responde bem os pacientes?",
-    answer: "Nossa IA foi treinada especificamente para atendimento em saúde. Ela entende contexto, horários, e responde de forma natural e profissional."
-  },
-  {
-    question: "E se o paciente quiser falar com uma pessoa?",
-    answer: "A IA identifica quando o paciente precisa de atendimento humano e encaminha automaticamente para você ou sua equipe."
-  },
-  {
-    question: "Quantos profissionais posso cadastrar?",
-    answer: "Ilimitados! Cada profissional tem sua própria agenda, horários de trabalho e pode ter seu próprio Google Calendar sincronizado."
-  }
-];
-
+const allFeatures = ["Agendamentos ilimitados", "WhatsApp integrado", "Lembretes automáticos (1h e 10min antes)", "Suporte 24/7 automatizado via IA", "Fila de espera inteligente", "Relatórios e métricas", "Gestão de pacientes", "Integrações com Google Calendar"];
+const plans = [{
+  id: "monthly",
+  name: "Mensal",
+  price: 47,
+  interval: "mês",
+  description: "Pagamento mensal",
+  features: allFeatures
+}, {
+  id: "quarterly",
+  name: "Trimestral",
+  price: 127,
+  interval: "trimestre",
+  savings: "Economize 10%",
+  popular: true,
+  description: "3 meses de acesso",
+  features: allFeatures
+}, {
+  id: "annual",
+  name: "Anual",
+  price: 470,
+  interval: "ano",
+  savings: "Economize 17%",
+  description: "12 meses de acesso",
+  features: allFeatures
+}];
+const features = [{
+  icon: Bot,
+  title: "Atendimento 24/7 por IA",
+  description: "Responda pacientes a qualquer hora, mesmo enquanto você dorme"
+}, {
+  icon: Bell,
+  title: "Lembretes automáticos",
+  description: "Reduza faltas em até 70% com lembretes inteligentes"
+}, {
+  icon: Calendar,
+  title: "Agenda inteligente",
+  description: "Múltiplos profissionais com agendas independentes"
+}, {
+  icon: Users,
+  title: "Fila de espera",
+  description: "Preencha horários vagos automaticamente"
+}, {
+  icon: Shield,
+  title: "Google Calendar",
+  description: "Sincronização em tempo real com sua agenda"
+}, {
+  icon: Zap,
+  title: "Relatórios",
+  description: "Métricas e insights sobre sua clínica"
+}];
+const testimonials = [{
+  name: "Dr. Carlos Silva",
+  role: "Dentista",
+  image: "https://randomuser.me/api/portraits/men/32.jpg",
+  text: "Reduzi as faltas em 65% no primeiro mês. A IA responde meus pacientes perfeitamente, mesmo de madrugada.",
+  rating: 5
+}, {
+  name: "Dra. Ana Paula",
+  role: "Dermatologista",
+  image: "https://randomuser.me/api/portraits/women/44.jpg",
+  text: "Minha secretária agora foca no atendimento presencial. O WhatsApp automático mudou nossa rotina completamente.",
+  rating: 5
+}, {
+  name: "Dr. Roberto Mendes",
+  role: "Fisioterapeuta",
+  image: "https://randomuser.me/api/portraits/men/52.jpg",
+  text: "Em 3 meses recuperei o investimento. Menos faltas = mais faturamento. Simples assim.",
+  rating: 5
+}, {
+  name: "Dra. Mariana Costa",
+  role: "Psicóloga",
+  image: "https://randomuser.me/api/portraits/women/68.jpg",
+  text: "Pacientes adoram a praticidade de agendar pelo WhatsApp a qualquer hora. Recomendo para todos os colegas.",
+  rating: 5
+}];
+const targetAudience = [{
+  title: "Clínicas médicas"
+}, {
+  title: "Consultórios odontológicos"
+}, {
+  title: "Estéticas e spas"
+}, {
+  title: "Psicólogos e terapeutas"
+}, {
+  title: "Fisioterapeutas"
+}, {
+  title: "Oftalmologistas"
+}];
+const faqs = [{
+  question: "Preciso ter conhecimento técnico para usar?",
+  answer: "Não! O AgendaClin foi feito para ser simples. Em menos de 5 minutos você conecta seu WhatsApp e começa a usar. Temos tutoriais em vídeo e suporte em português."
+}, {
+  question: "Funciona com meu sistema atual?",
+  answer: "Sim! O AgendaClin funciona de forma independente e se integra com Google Calendar. Você pode continuar usando seu sistema atual enquanto aproveita nossa automação."
+}, {
+  question: "Posso cancelar a qualquer momento?",
+  answer: "Sim! Não temos fidelidade. Você pode cancelar quando quiser sem multas ou taxas extras."
+}, {
+  question: "A IA realmente responde bem os pacientes?",
+  answer: "Nossa IA foi treinada especificamente para atendimento em saúde. Ela entende contexto, horários, e responde de forma natural e profissional."
+}, {
+  question: "E se o paciente quiser falar com uma pessoa?",
+  answer: "A IA identifica quando o paciente precisa de atendimento humano e encaminha automaticamente para você ou sua equipe."
+}, {
+  question: "Quantos profissionais posso cadastrar?",
+  answer: "Ilimitados! Cada profissional tem sua própria agenda, horários de trabalho e pode ter seu próprio Google Calendar sincronizado."
+}];
 function CountdownTimer() {
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
-
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date();
       const endOfDay = new Date();
       endOfDay.setHours(23, 59, 59, 999);
       const diff = endOfDay.getTime() - now.getTime();
-
       return {
-        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((diff / (1000 * 60)) % 60),
-        seconds: Math.floor((diff / 1000) % 60)
+        hours: Math.floor(diff / (1000 * 60 * 60) % 24),
+        minutes: Math.floor(diff / (1000 * 60) % 60),
+        seconds: Math.floor(diff / 1000 % 60)
       };
     };
-
     setTimeLeft(calculateTimeLeft());
     const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  return (
-    <div className="flex items-center justify-center gap-2 text-2xl md:text-3xl font-bold">
+  return <div className="flex items-center justify-center gap-2 text-2xl md:text-3xl font-bold">
       <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
         {String(timeLeft.hours).padStart(2, '0')}h
       </div>
@@ -186,122 +147,84 @@ function CountdownTimer() {
       <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
         {String(timeLeft.seconds).padStart(2, '0')}s
       </div>
-    </div>
-  );
+    </div>;
 }
-
 function TestimonialCarousel() {
   const [current, setCurrent] = useState(0);
-
-  const next = () => setCurrent((prev) => (prev + 1) % testimonials.length);
-  const prev = () => setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length);
-
+  const next = () => setCurrent(prev => (prev + 1) % testimonials.length);
+  const prev = () => setCurrent(prev => (prev - 1 + testimonials.length) % testimonials.length);
   useEffect(() => {
     const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
   }, []);
-
-  return (
-    <div className="relative max-w-4xl mx-auto">
+  return <div className="relative max-w-4xl mx-auto">
       <div className="overflow-hidden">
-        <div 
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${current * 100}%)` }}
-        >
-          {testimonials.map((testimonial, index) => (
-            <div key={index} className="w-full flex-shrink-0 px-4">
+        <div className="flex transition-transform duration-500 ease-in-out" style={{
+        transform: `translateX(-${current * 100}%)`
+      }}>
+          {testimonials.map((testimonial, index) => <div key={index} className="w-full flex-shrink-0 px-4">
               <Card className="bg-background border-2">
                 <CardContent className="pt-8 pb-6 px-8">
                   <div className="flex items-center gap-4 mb-6">
-                    <img 
-                      src={testimonial.image} 
-                      alt={testimonial.name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-primary"
-                    />
+                    <img src={testimonial.image} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary" />
                     <div>
                       <h4 className="font-semibold text-lg">{testimonial.name}</h4>
                       <p className="text-muted-foreground">{testimonial.role}</p>
                       <div className="flex gap-0.5 mt-1">
-                        {Array.from({ length: testimonial.rating }).map((_, i) => (
-                          <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        ))}
+                        {Array.from({
+                      length: testimonial.rating
+                    }).map((_, i) => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}
                       </div>
                     </div>
                   </div>
                   <p className="text-lg italic text-muted-foreground">"{testimonial.text}"</p>
                 </CardContent>
               </Card>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
       
-      <button 
-        onClick={prev}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors"
-      >
+      <button onClick={prev} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors">
         <ChevronLeft className="w-5 h-5" />
       </button>
-      <button 
-        onClick={next}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors"
-      >
+      <button onClick={next} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors">
         <ChevronRight className="w-5 h-5" />
       </button>
 
       <div className="flex justify-center gap-2 mt-6">
-        {testimonials.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrent(index)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              current === index ? 'bg-primary' : 'bg-muted-foreground/30'
-            }`}
-          />
-        ))}
+        {testimonials.map((_, index) => <button key={index} onClick={() => setCurrent(index)} className={`w-2.5 h-2.5 rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-muted-foreground/30'}`} />)}
       </div>
-    </div>
-  );
+    </div>;
 }
-
-function FAQItem({ question, answer }: { question: string; answer: string }) {
+function FAQItem({
+  question,
+  answer
+}: {
+  question: string;
+  answer: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border rounded-lg overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 text-left bg-background hover:bg-muted/50 transition-colors"
-      >
+  return <div className="border rounded-lg overflow-hidden">
+      <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-4 text-left bg-background hover:bg-muted/50 transition-colors">
         <span className="font-medium">{question}</span>
-        {isOpen ? (
-          <Minus className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-        ) : (
-          <Plus className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-        )}
+        {isOpen ? <Minus className="w-5 h-5 text-muted-foreground flex-shrink-0" /> : <Plus className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
       </button>
-      {isOpen && (
-        <div className="px-4 pb-4 text-muted-foreground">
+      {isOpen && <div className="px-4 pb-4 text-muted-foreground">
           {answer}
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }
-
 export default function LandingPage() {
   const navigate = useNavigate();
-
   const handleSelectPlan = (planId: string) => {
     navigate(`/login?plan=${planId}`);
   };
-
   const scrollToPricing = () => {
-    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('pricing')?.scrollIntoView({
+      behavior: 'smooth'
+    });
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4">
@@ -311,10 +234,7 @@ export default function LandingPage() {
               <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex">
                 Planos
               </Button>
-              <Button 
-                className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
-                onClick={() => navigate('/login')}
-              >
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold" onClick={() => navigate('/login')}>
                 Entrar
               </Button>
             </div>
@@ -323,7 +243,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-12 md:py-20 overflow-hidden">
+      <section className="md:py-20 overflow-hidden py-[40px] pb-[4px]">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <Badge variant="secondary" className="mb-6">
@@ -331,32 +251,19 @@ export default function LandingPage() {
               Automação inteligente para clínicas
             </Badge>
             
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight">
+            <h1 className="md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight py-0 text-2xl font-sans text-justify">
               Elimine as faltas, automatize confirmações e{" "}
               <span className="text-primary">aumente o faturamento</span>
             </h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            <p className="md:text-xl text-muted-foreground mb-8 max-w-3xl py-0 px-0 mx-px my-px text-sm">
               Chega de{" "}
               <span className="font-semibold text-foreground">pacientes que não aparecem</span>,{" "}
               <span className="font-semibold text-foreground">WhatsApp tocando fora de hora</span> e{" "}
               <span className="font-semibold text-foreground">funcionários perdendo tempo com ligações</span>.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground mb-8">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span>Sem fidelidade</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span>Configuração em 5 min</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span>Suporte em português</span>
-              </div>
-            </div>
+            
           </div>
         </div>
       </section>
@@ -382,11 +289,7 @@ export default function LandingPage() {
             </div>
             
             <div className="flex justify-center mt-6">
-              <Button 
-                size="lg" 
-                className="gap-2 text-base px-8 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
-                onClick={scrollToPricing}
-              >
+              <Button size="lg" className="gap-2 text-base px-8 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold" onClick={scrollToPricing}>
                 Quero automatizar minha clínica
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -446,8 +349,7 @@ export default function LandingPage() {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {features.map((feature, index) => (
-              <Card key={index} className="bg-background hover:shadow-lg transition-shadow">
+            {features.map((feature, index) => <Card key={index} className="bg-background hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                     <feature.icon className="w-6 h-6 text-primary" />
@@ -455,8 +357,7 @@ export default function LandingPage() {
                   <CardTitle className="text-lg">{feature.title}</CardTitle>
                   <CardDescription>{feature.description}</CardDescription>
                 </CardHeader>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -474,14 +375,9 @@ export default function LandingPage() {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
-            {targetAudience.map((item, index) => (
-              <div 
-                key={index} 
-                className="bg-background rounded-xl p-6 text-center hover:shadow-lg transition-shadow border"
-              >
+            {targetAudience.map((item, index) => <div key={index} className="bg-background rounded-xl p-6 text-center hover:shadow-lg transition-shadow border">
                 <span className="text-sm font-medium">{item.title}</span>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -505,19 +401,14 @@ export default function LandingPage() {
       {/* Urgency Banner */}
       <section className="py-12 bg-destructive text-destructive-foreground">
         <div className="container mx-auto px-4 text-center">
-          <h3 className="text-2xl md:text-3xl font-bold mb-2">
+          <h3 className="md:text-3xl font-bold mb-2 text-xl">
             OFERTA POR TEMPO LIMITADO
           </h3>
           <p className="text-lg mb-6 opacity-90">
             Preço promocional encerra em:
           </p>
           <CountdownTimer />
-          <Button 
-            size="lg" 
-            variant="secondary"
-            className="mt-6 gap-2 font-semibold"
-            onClick={scrollToPricing}
-          >
+          <Button size="lg" variant="secondary" className="mt-6 gap-2 font-semibold" onClick={scrollToPricing}>
             Garantir minha vaga
             <ArrowRight className="w-4 h-4" />
           </Button>
@@ -534,12 +425,10 @@ export default function LandingPage() {
             Acesso completo a todas as funcionalidades, sem surpresas
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-            {allFeatures.map((feature, index) => (
-              <div key={index} className="flex items-center gap-3 bg-muted/50 p-4 rounded-xl">
+            {allFeatures.map((feature, index) => <div key={index} className="flex items-center gap-3 bg-muted/50 p-4 rounded-xl">
                 <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                 <span className="text-sm font-medium">{feature}</span>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -556,16 +445,10 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map((plan) => (
-              <Card 
-                key={plan.id} 
-                className={`relative ${plan.popular ? 'border-accent shadow-xl ring-2 ring-accent/20 scale-105 z-10' : ''}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+            {plans.map(plan => <Card key={plan.id} className={`relative ${plan.popular ? 'border-accent shadow-xl ring-2 ring-accent/20 scale-105 z-10' : ''}`}>
+                {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-accent text-accent-foreground shadow-lg">Mais Escolhido</Badge>
-                  </div>
-                )}
+                  </div>}
                 <CardHeader className="text-center pb-2">
                   <CardTitle className="text-2xl">{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
@@ -573,27 +456,19 @@ export default function LandingPage() {
                     <span className="text-4xl font-bold">R$ {plan.price}</span>
                     <span className="text-muted-foreground">/{plan.interval}</span>
                   </div>
-                  {plan.savings && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                  {plan.savings && <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
                       {plan.savings}
-                    </Badge>
-                  )}
+                    </Badge>}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-center text-muted-foreground">
                     Acesso completo a todas as funcionalidades
                   </p>
-                  <Button 
-                    className={`w-full ${plan.popular ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}`}
-                    size="lg"
-                    variant={plan.popular ? "default" : "outline"}
-                    onClick={() => handleSelectPlan(plan.id)}
-                  >
+                  <Button className={`w-full ${plan.popular ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan.id)}>
                     Quero Este Plano
                   </Button>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -611,9 +486,7 @@ export default function LandingPage() {
           </div>
           
           <div className="max-w-3xl mx-auto space-y-3">
-            {faqs.map((faq, index) => (
-              <FAQItem key={index} question={faq.question} answer={faq.answer} />
-            ))}
+            {faqs.map((faq, index) => <FAQItem key={index} question={faq.question} answer={faq.answer} />)}
           </div>
         </div>
       </section>
@@ -627,12 +500,7 @@ export default function LandingPage() {
           <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
             Enquanto você descansa, a IA continua agendando e atendendo seus pacientes
           </p>
-          <Button 
-            size="lg" 
-            variant="secondary"
-            className="gap-2 font-semibold"
-            onClick={scrollToPricing}
-          >
+          <Button size="lg" variant="secondary" className="gap-2 font-semibold" onClick={scrollToPricing}>
             Quero Automatizar Minha Clínica
             <ArrowRight className="w-4 h-4" />
           </Button>
@@ -654,6 +522,5 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 }
