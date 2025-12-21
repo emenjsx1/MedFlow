@@ -93,13 +93,18 @@ async function fetchGoogleCalendarEvents(
     const data = await response.json()
     const events: { start: string; end: string }[] = []
     
+    console.log(`Calendar ${calendarId} returned ${data.items?.length || 0} raw items`)
+    
     for (const item of data.items || []) {
       // Skip all-day events (they have date instead of dateTime)
       if (item.start?.dateTime && item.end?.dateTime) {
+        console.log(`Event found: ${item.summary || 'No title'} from ${item.start.dateTime} to ${item.end.dateTime}`)
         events.push({
           start: item.start.dateTime,
           end: item.end.dateTime,
         })
+      } else {
+        console.log(`Skipped all-day event: ${item.summary || 'No title'}`)
       }
     }
     
