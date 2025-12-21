@@ -316,7 +316,7 @@ export default function LandingPage() {
                 1
               </div>
               <h3 className="text-xl font-semibold mb-2">Conecte seu WhatsApp</h3>
-              <p className="text-muted-foreground">Em menos de 5 minutos você conecta sua conta e configura as mensagens</p>
+              <p className="text-muted-foreground">Em menos de 5 minutos você conecta sua conta</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
