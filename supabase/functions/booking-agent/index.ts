@@ -252,7 +252,8 @@ Deno.serve(async (req) => {
           .update({ name: patientName })
           .eq('id', patientId)
       }
-    } else if (patientName) {
+    } else {
+      // Always create patient if doesn't exist (even without name) to ensure messages are linked
       const { data: newPatient, error: patientError } = await supabase
         .from('patients')
         .insert({
@@ -265,6 +266,7 @@ Deno.serve(async (req) => {
 
       if (!patientError && newPatient) {
         patientId = newPatient.id
+        console.log('Patient created with id:', patientId)
       } else {
         console.error('Patient creation error:', patientError)
       }
@@ -545,34 +547,51 @@ Responda de forma natural e amigável em português brasileiro.`
       { role: 'user', content: message }
     ]
 
-    // Use Google Gemini API (free tier) or custom OpenAI
-    let useGemini = true
-    let apiKey = GOOGLE_GEMINI_API_KEY
+    // Check if tenant uses custom OpenAI key
+    const useCustomOpenAI = tenantSettings.use_custom_openai && tenantSecrets.openai_api_key
     
-    if (tenantSettings.use_custom_openai && tenantSecrets.openai_api_key) {
-      useGemini = false
-      apiKey = tenantSecrets.openai_api_key
-    }
-
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'AI API key not configured. Please configure GOOGLE_GEMINI_API_KEY.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Call AI - use Google Gemini API directly (free tier)
+    // Use Lovable AI Gateway (preferred) or custom OpenAI
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
+    
     let aiResponse: Response
     
-    if (useGemini) {
-      // Google Gemini API format
+    if (useCustomOpenAI) {
+      // Use custom OpenAI API
+      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tenantSecrets.openai_api_key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages,
+          temperature: 0.7,
+          max_tokens: 600,
+        }),
+      })
+    } else if (LOVABLE_API_KEY) {
+      // Use Lovable AI Gateway (no rate limits, preferred)
+      aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages,
+        }),
+      })
+    } else if (GOOGLE_GEMINI_API_KEY) {
+      // Fallback to direct Gemini API (may have rate limits)
       const geminiMessages = messages.map((m: { role: string; content: string }) => ({
         role: m.role === 'assistant' ? 'model' : m.role === 'system' ? 'user' : m.role,
         parts: [{ text: m.role === 'system' ? `[SYSTEM INSTRUCTIONS]\n${m.content}` : m.content }]
       }))
       
       aiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -586,20 +605,10 @@ Responda de forma natural e amigável em português brasileiro.`
         }
       )
     } else {
-      // OpenAI API format
-      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages,
-          temperature: 0.7,
-          max_tokens: 600,
-        }),
-      })
+      return new Response(
+        JSON.stringify({ error: 'AI API not configured. Please ensure LOVABLE_API_KEY is available.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!aiResponse.ok) {
@@ -613,6 +622,13 @@ Responda de forma natural e amigável em português brasileiro.`
         )
       }
       
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted', reply: 'Desculpe, o serviço de IA está temporariamente indisponível.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
       return new Response(
         JSON.stringify({ error: 'AI API error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -621,11 +637,13 @@ Responda de forma natural e amigável em português brasileiro.`
 
     const aiData = await aiResponse.json()
     
-    // Parse response based on API used
+    // Parse response - Lovable AI and OpenAI use same format, Gemini is different
     let reply: string
-    if (useGemini) {
+    if (!useCustomOpenAI && !LOVABLE_API_KEY && GOOGLE_GEMINI_API_KEY) {
+      // Direct Gemini API format
       reply = aiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Desculpe, não entendi. Pode repetir?'
     } else {
+      // OpenAI-compatible format (Lovable AI Gateway and OpenAI)
       reply = aiData.choices?.[0]?.message?.content || 'Desculpe, não entendi. Pode repetir?'
     }
 
