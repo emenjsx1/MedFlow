@@ -249,7 +249,76 @@ serve(async (req) => {
       );
     }
 
-    console.log('User created successfully:', newUser.user?.id, 'Email:', userEmail);
+    const userId = newUser.user?.id;
+    console.log('User created successfully:', userId, 'Email:', userEmail);
+
+    // Criar tenant, profile e role admin para o novo usuário
+    if (userId) {
+      try {
+        // Criar tenant
+        const { data: tenantData, error: tenantError } = await supabaseAdmin
+          .from('tenants')
+          .insert({
+            name: `${userName || 'Cliente'}'s Clinic`,
+            timezone: 'America/Sao_Paulo'
+          })
+          .select('id')
+          .single();
+
+        if (tenantError) {
+          console.error('Error creating tenant:', tenantError);
+        } else {
+          const tenantId = tenantData.id;
+          console.log('Tenant created:', tenantId);
+
+          // Criar profile
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: userEmail,
+              full_name: userName || 'Cliente',
+              tenant_id: tenantId
+            });
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+          } else {
+            console.log('Profile created for user:', userId);
+          }
+
+          // Criar role admin (todos os donos de negócio são admin)
+          const { error: roleError } = await supabaseAdmin
+            .from('user_roles')
+            .insert({
+              user_id: userId,
+              role: 'admin'
+            });
+
+          if (roleError) {
+            console.error('Error creating role:', roleError);
+          } else {
+            console.log('Admin role assigned to user:', userId);
+          }
+
+          // Criar tenant_settings
+          const { error: settingsError } = await supabaseAdmin
+            .from('tenant_settings')
+            .insert({
+              tenant_id: tenantId
+            });
+
+          if (settingsError) {
+            console.error('Error creating tenant settings:', settingsError);
+          } else {
+            console.log('Tenant settings created:', tenantId);
+          }
+        }
+      } catch (setupError) {
+        console.error('Error setting up user account:', setupError);
+        // Continuar mesmo se falhar - o usuário foi criado
+      }
+    }
 
     // Enviar email de boas-vindas com credenciais
     try {
@@ -266,13 +335,11 @@ serve(async (req) => {
 
       if (emailError) {
         console.error('Error sending welcome email:', emailError);
-        // Não falhar a criação do usuário se o email falhar
       } else {
         console.log('Welcome email sent successfully:', emailData);
       }
     } catch (emailErr) {
       console.error('Exception sending welcome email:', emailErr);
-      // Continuar mesmo se o email falhar
     }
 
     return new Response(
