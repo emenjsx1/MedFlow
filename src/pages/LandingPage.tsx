@@ -234,7 +234,7 @@ export default function LandingPage() {
               <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex">
                 Planos
               </Button>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold" onClick={() => navigate('/login')}>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" onClick={() => navigate('/login')}>
                 Entrar
               </Button>
             </div>
@@ -275,8 +275,8 @@ export default function LandingPage() {
             <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-2xl overflow-hidden shadow-2xl border relative">
               <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
-                  <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center mx-auto mb-4 cursor-pointer hover:scale-105 transition-transform shadow-lg">
-                    <Play className="w-10 h-10 text-accent-foreground ml-1" />
+                  <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mx-auto mb-4 cursor-pointer hover:scale-105 transition-transform shadow-lg">
+                    <Play className="w-10 h-10 text-primary-foreground ml-1" />
                   </div>
                   <p className="text-lg font-medium">Clique para assistir</p>
                   <p className="text-sm mt-1 opacity-60">Veja como funciona em 2 minutos</p>
@@ -284,12 +284,12 @@ export default function LandingPage() {
               </div>
               {/* Progress bar like GestorChef */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
-                <div className="h-full bg-accent w-0"></div>
+                <div className="h-full bg-primary w-0"></div>
               </div>
             </div>
             
             <div className="flex justify-center mt-6">
-              <Button size="lg" className="gap-2 text-base px-8 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold" onClick={scrollToPricing}>
+              <Button size="lg" className="gap-2 text-base px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" onClick={scrollToPricing}>
                 Quero automatizar minha clínica
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -312,21 +312,21 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
                 1
               </div>
               <h3 className="text-xl font-semibold mb-2">Conecte seu WhatsApp</h3>
               <p className="text-muted-foreground">Em menos de 5 minutos você conecta sua conta</p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
                 2
               </div>
               <h3 className="text-xl font-semibold mb-2">IA assume o atendimento</h3>
               <p className="text-muted-foreground">Nossa IA responde, agenda e confirma consultas automaticamente</p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
                 3
               </div>
               <h3 className="text-xl font-semibold mb-2">Foque no que importa</h3>
@@ -445,9 +445,9 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map(plan => <Card key={plan.id} className={`relative ${plan.popular ? 'border-accent shadow-xl ring-2 ring-accent/20 scale-105 z-10' : ''}`}>
+            {plans.map(plan => <Card key={plan.id} className={`relative ${plan.popular ? 'border-primary shadow-xl ring-2 ring-primary/20 scale-105 z-10' : ''}`}>
                 {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-accent text-accent-foreground shadow-lg">Mais Escolhido</Badge>
+                    <Badge className="bg-primary text-primary-foreground shadow-lg">Mais Escolhido</Badge>
                   </div>}
                 <CardHeader className="text-center pb-2">
                   <CardTitle className="text-2xl">{plan.name}</CardTitle>
@@ -464,7 +464,7 @@ export default function LandingPage() {
                   <p className="text-sm text-center text-muted-foreground">
                     Acesso completo a todas as funcionalidades
                   </p>
-                  <Button className={`w-full ${plan.popular ? 'bg-accent hover:bg-accent/90 text-accent-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan.id)}>
+                  <Button className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan.id)}>
                     Quero Este Plano
                   </Button>
                 </CardContent>
