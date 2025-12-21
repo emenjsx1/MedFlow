@@ -38,6 +38,8 @@ import {
   Trash2,
   HelpCircle,
   Lock,
+  Globe,
+  Mail,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -93,6 +95,12 @@ export default function Settings() {
   const [newFaqQuestion, setNewFaqQuestion] = useState('');
   const [newFaqAnswer, setNewFaqAnswer] = useState('');
   const [savingClinic, setSavingClinic] = useState(false);
+
+  // Timezone and email notification state
+  const [timezone, setTimezone] = useState('America/Sao_Paulo');
+  const [notifyOwnerOnBooking, setNotifyOwnerOnBooking] = useState(true);
+  const [notificationEmails, setNotificationEmails] = useState<string[]>([]);
+  const [newNotificationEmail, setNewNotificationEmail] = useState('');
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -155,6 +163,9 @@ export default function Settings() {
         setAgentGreeting(settings.agent_greeting_message || 'Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
         setAgentBusinessContext((settings as any).agent_business_context || '');
         setAgentFaqs((settings as any).agent_faqs || []);
+        setTimezone((settings as any).timezone || 'America/Sao_Paulo');
+        setNotifyOwnerOnBooking((settings as any).notify_owner_on_booking !== false);
+        setNotificationEmails((settings as any).notification_emails || []);
       }
 
       // Load OpenAI API key from tenant_secrets (admin only)
@@ -247,6 +258,9 @@ export default function Settings() {
           agent_greeting_message: agentGreeting,
           agent_business_context: agentBusinessContext,
           agent_faqs: agentFaqs,
+          timezone: timezone,
+          notify_owner_on_booking: notifyOwnerOnBooking,
+          notification_emails: notificationEmails,
         } as any, { onConflict: 'tenant_id' });
 
       // Save OpenAI API key to tenant_secrets (secure storage)
@@ -680,6 +694,125 @@ export default function Settings() {
                           {day.label}
                         </Button>
                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Timezone */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Fuso Horário
+                  </h4>
+                  <div className="space-y-2">
+                    <Label>Selecione seu fuso horário</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={timezone}
+                      onChange={(e) => setTimezone(e.target.value)}
+                    >
+                      <optgroup label="Brasil">
+                        <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+                        <option value="America/Manaus">Manaus (GMT-4)</option>
+                        <option value="America/Rio_Branco">Rio Branco (GMT-5)</option>
+                        <option value="America/Noronha">Fernando de Noronha (GMT-2)</option>
+                      </optgroup>
+                      <optgroup label="África">
+                        <option value="Africa/Maputo">Maputo (GMT+2)</option>
+                        <option value="Africa/Luanda">Luanda (GMT+1)</option>
+                        <option value="Africa/Johannesburg">Joanesburgo (GMT+2)</option>
+                      </optgroup>
+                      <optgroup label="Europa">
+                        <option value="Europe/Lisbon">Lisboa (GMT+0)</option>
+                        <option value="Europe/Madrid">Madrid (GMT+1)</option>
+                      </optgroup>
+                      <optgroup label="Outros">
+                        <option value="America/New_York">Nova York (GMT-5)</option>
+                        <option value="America/Los_Angeles">Los Angeles (GMT-8)</option>
+                        <option value="UTC">UTC (GMT+0)</option>
+                      </optgroup>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Este fuso horário será usado para exibir datas e horários em todo o sistema
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Email Notifications */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Notificações por Email
+                  </h4>
+                  
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Notificar dono a cada agendamento</p>
+                      <p className="text-sm text-muted-foreground">
+                        Você receberá um email sempre que um novo agendamento for criado
+                      </p>
+                    </div>
+                    <Switch
+                      checked={notifyOwnerOnBooking}
+                      onCheckedChange={setNotifyOwnerOnBooking}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Emails adicionais para notificação</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Adicione emails que também devem receber notificações de agendamento
+                    </p>
+                    
+                    {notificationEmails.length > 0 && (
+                      <div className="space-y-2">
+                        {notificationEmails.map((email, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            <span className="flex-1 text-sm">{email}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setNotificationEmails(prev => prev.filter((_, i) => i !== index))}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        placeholder="email@exemplo.com"
+                        value={newNotificationEmail}
+                        onChange={(e) => setNewNotificationEmail(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newNotificationEmail.trim() && newNotificationEmail.includes('@')) {
+                            e.preventDefault();
+                            setNotificationEmails(prev => [...prev, newNotificationEmail.trim()]);
+                            setNewNotificationEmail('');
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          if (newNotificationEmail.trim() && newNotificationEmail.includes('@')) {
+                            setNotificationEmails(prev => [...prev, newNotificationEmail.trim()]);
+                            setNewNotificationEmail('');
+                          }
+                        }}
+                        disabled={!newNotificationEmail.trim() || !newNotificationEmail.includes('@')}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>

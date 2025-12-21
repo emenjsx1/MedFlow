@@ -342,10 +342,13 @@ export type Database = {
           id: string
           max_attempts: number | null
           min_hours_for_replacement: number | null
+          notification_emails: string[] | null
+          notify_owner_on_booking: boolean | null
           reconfirm_hours_before: number | null
           reconfirmation_template: string | null
           response_window_hours: number | null
           tenant_id: string
+          timezone: string | null
           updated_at: string | null
           use_custom_openai: boolean | null
           waitlist_offer_template: string | null
@@ -373,10 +376,13 @@ export type Database = {
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
+          notification_emails?: string[] | null
+          notify_owner_on_booking?: boolean | null
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
           tenant_id: string
+          timezone?: string | null
           updated_at?: string | null
           use_custom_openai?: boolean | null
           waitlist_offer_template?: string | null
@@ -404,10 +410,13 @@ export type Database = {
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
+          notification_emails?: string[] | null
+          notify_owner_on_booking?: boolean | null
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
           tenant_id?: string
+          timezone?: string | null
           updated_at?: string | null
           use_custom_openai?: boolean | null
           waitlist_offer_template?: string | null
