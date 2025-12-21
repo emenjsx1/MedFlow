@@ -55,7 +55,7 @@ export default function DashboardLayout({ children, requireAdmin = false }: Dash
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-border z-40 flex items-center justify-between px-4">
-        <Logo size="sm" />
+        <Logo size="md" />
         <Button
           variant="ghost"
           size="icon"
