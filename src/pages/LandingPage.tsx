@@ -251,7 +251,7 @@ export default function LandingPage() {
               Automação inteligente para clínicas
             </Badge>
             
-            <h1 className="md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight py-0 text-2xl font-sans text-justify">
+            <h1 className="md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight py-0 text-2xl font-sans text-center">
               Elimine as faltas, automatize confirmações e{" "}
               <span className="text-primary">aumente o faturamento</span>
             </h1>
