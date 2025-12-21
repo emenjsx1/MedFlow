@@ -16,7 +16,8 @@ const plans = [{
   price: 47,
   interval: "mês",
   description: "Pagamento mensal",
-  features: allFeatures
+  features: allFeatures,
+  checkoutUrl: "https://checkout.escalepay.com/3004344"
 }, {
   id: "quarterly",
   name: "Trimestral",
@@ -27,7 +28,8 @@ const plans = [{
   popular: true,
   hot: true,
   description: "3 meses de acesso",
-  features: allFeatures
+  features: allFeatures,
+  checkoutUrl: "https://checkout.escalepay.com/8383727"
 }, {
   id: "annual",
   name: "Anual",
@@ -36,7 +38,8 @@ const plans = [{
   interval: "ano",
   savings: "Economize mais de 80%",
   description: "12 meses de acesso",
-  features: allFeatures
+  features: allFeatures,
+  checkoutUrl: "https://checkout.escalepay.com/3059186"
 }];
 const features = [{
   icon: Bot,
@@ -350,8 +353,8 @@ export default function LandingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<typeof plans[0] | null>(null);
   const handleSelectPlan = (plan: typeof plans[0]) => {
-    setSelectedPlan(plan);
-    setIsModalOpen(true);
+    // Redirecionar diretamente para o checkout do plano selecionado
+    window.location.href = plan.checkoutUrl;
   };
   const scrollToPricing = () => {
     document.getElementById('pricing')?.scrollIntoView({
