@@ -575,7 +575,7 @@ export default function LandingPage() {
               Escolha seu plano e comece agora
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Todos os planos incluem as mesmas funcionalidades. Escolha apenas o período.
+              ⚡Todos os planos estão com desconto nesse momento⚡
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
