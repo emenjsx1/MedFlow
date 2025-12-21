@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY')
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')?.replace(/\/$/, '')
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
     const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')
@@ -544,36 +544,62 @@ Responda de forma natural e amigável em português brasileiro.`
       { role: 'user', content: message }
     ]
 
-    // Choose API based on settings
-    let apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions'
-    let apiKey = LOVABLE_API_KEY
+    // Use Google Gemini API (free tier) or custom OpenAI
+    let useGemini = true
+    let apiKey = GOOGLE_GEMINI_API_KEY
     
     if (tenantSettings.use_custom_openai && tenantSettings.openai_api_key) {
-      apiUrl = 'https://api.openai.com/v1/chat/completions'
+      useGemini = false
       apiKey = tenantSettings.openai_api_key
     }
 
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'AI API key not configured' }),
+        JSON.stringify({ error: 'AI API key not configured. Please configure GOOGLE_GEMINI_API_KEY.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Call AI
-    const aiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: tenantSettings.use_custom_openai ? 'gpt-4o-mini' : 'google/gemini-2.5-flash',
-        messages,
-        temperature: 0.7,
-        max_tokens: 600,
-      }),
-    })
+    // Call AI - use Google Gemini API directly (free tier)
+    let aiResponse: Response
+    
+    if (useGemini) {
+      // Google Gemini API format
+      const geminiMessages = messages.map((m: { role: string; content: string }) => ({
+        role: m.role === 'assistant' ? 'model' : m.role === 'system' ? 'user' : m.role,
+        parts: [{ text: m.role === 'system' ? `[SYSTEM INSTRUCTIONS]\n${m.content}` : m.content }]
+      }))
+      
+      aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: geminiMessages,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 600,
+            },
+          }),
+        }
+      )
+    } else {
+      // OpenAI API format
+      aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages,
+          temperature: 0.7,
+          max_tokens: 600,
+        }),
+      })
+    }
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text()
@@ -593,7 +619,14 @@ Responda de forma natural e amigável em português brasileiro.`
     }
 
     const aiData = await aiResponse.json()
-    const reply = aiData.choices?.[0]?.message?.content || 'Desculpe, não entendi. Pode repetir?'
+    
+    // Parse response based on API used
+    let reply: string
+    if (useGemini) {
+      reply = aiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Desculpe, não entendi. Pode repetir?'
+    } else {
+      reply = aiData.choices?.[0]?.message?.content || 'Desculpe, não entendi. Pode repetir?'
+    }
 
     console.log('AI reply:', reply)
 

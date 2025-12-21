@@ -37,6 +37,7 @@ import {
   Plus,
   Trash2,
   HelpCircle,
+  Lock,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -92,6 +93,12 @@ export default function Settings() {
   const [newFaqQuestion, setNewFaqQuestion] = useState('');
   const [newFaqAnswer, setNewFaqAnswer] = useState('');
   const [savingClinic, setSavingClinic] = useState(false);
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // Handle OAuth callback from URL params
   useEffect(() => {
@@ -474,6 +481,42 @@ export default function Settings() {
     toast.success('Templates salvos com sucesso!');
   };
 
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success('Senha alterada com sucesso!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Erro ao alterar senha');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
@@ -506,6 +549,10 @@ export default function Settings() {
             <TabsTrigger value="templates" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               Mensagens
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <Lock className="w-4 h-4" />
+              Segurança
             </TabsTrigger>
           </TabsList>
 
@@ -1188,6 +1235,59 @@ Exemplo:
                     <li>• O paciente pode perguntar sobre localização, horários e pedir suporte</li>
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Security Tab */}
+          <TabsContent value="security" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Alterar Senha
+                </CardTitle>
+                <CardDescription>
+                  Altere sua senha de acesso ao sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4 max-w-md">
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Nova Senha</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="Digite a nova senha"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirme a nova senha"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    A senha deve ter pelo menos 6 caracteres
+                  </p>
+                </div>
+
+                <Button onClick={handleChangePassword} disabled={savingPassword}>
+                  {savingPassword ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Alterando...
+                    </>
+                  ) : (
+                    'Alterar Senha'
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
