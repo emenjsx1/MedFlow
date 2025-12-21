@@ -152,10 +152,20 @@ export default function Settings() {
         setWorkingDays(settings.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
         setAppointmentDuration(settings.appointment_duration_minutes || 30);
         setUseCustomOpenai(settings.use_custom_openai || false);
-        setOpenaiApiKey(settings.openai_api_key || '');
         setAgentGreeting(settings.agent_greeting_message || 'Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?');
         setAgentBusinessContext((settings as any).agent_business_context || '');
         setAgentFaqs((settings as any).agent_faqs || []);
+      }
+
+      // Load OpenAI API key from tenant_secrets (admin only)
+      const { data: secrets } = await supabase
+        .from('tenant_secrets')
+        .select('openai_api_key')
+        .eq('tenant_id', profile.tenant_id)
+        .maybeSingle();
+      
+      if (secrets) {
+        setOpenaiApiKey(secrets.openai_api_key || '');
       }
     } catch (error) {
       console.error('Error loading clinic settings:', error);
@@ -221,6 +231,7 @@ export default function Settings() {
 
       if (!profile?.tenant_id) throw new Error('Tenant not found');
 
+      // Save non-sensitive settings to tenant_settings
       const { error } = await supabase
         .from('tenant_settings')
         .upsert({
@@ -233,11 +244,20 @@ export default function Settings() {
           working_days: workingDays,
           appointment_duration_minutes: appointmentDuration,
           use_custom_openai: useCustomOpenai,
-          openai_api_key: useCustomOpenai ? openaiApiKey : null,
           agent_greeting_message: agentGreeting,
           agent_business_context: agentBusinessContext,
           agent_faqs: agentFaqs,
         } as any, { onConflict: 'tenant_id' });
+
+      // Save OpenAI API key to tenant_secrets (secure storage)
+      if (useCustomOpenai && openaiApiKey) {
+        await supabase
+          .from('tenant_secrets')
+          .upsert({
+            tenant_id: profile.tenant_id,
+            openai_api_key: openaiApiKey,
+          }, { onConflict: 'tenant_id' });
+      }
 
       if (error) throw error;
       toast.success('Configurações da clínica salvas!');

@@ -280,6 +280,47 @@ export type Database = {
           },
         ]
       }
+      tenant_secrets: {
+        Row: {
+          created_at: string | null
+          google_access_token: string | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
+          id: string
+          openai_api_key: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          openai_api_key?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          openai_api_key?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_secrets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_settings: {
         Row: {
           agent_booking_confirmation: string | null
@@ -296,15 +337,11 @@ export type Database = {
           confirm_hours_before: number | null
           confirmation_template: string | null
           created_at: string | null
-          google_access_token: string | null
           google_calendar_connected: boolean | null
           google_calendar_id: string | null
-          google_refresh_token: string | null
-          google_token_expires_at: string | null
           id: string
           max_attempts: number | null
           min_hours_for_replacement: number | null
-          openai_api_key: string | null
           reconfirm_hours_before: number | null
           reconfirmation_template: string | null
           response_window_hours: number | null
@@ -331,15 +368,11 @@ export type Database = {
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
-          google_access_token?: string | null
           google_calendar_connected?: boolean | null
           google_calendar_id?: string | null
-          google_refresh_token?: string | null
-          google_token_expires_at?: string | null
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
-          openai_api_key?: string | null
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
@@ -366,15 +399,11 @@ export type Database = {
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
-          google_access_token?: string | null
           google_calendar_connected?: boolean | null
           google_calendar_id?: string | null
-          google_refresh_token?: string | null
-          google_token_expires_at?: string | null
           id?: string
           max_attempts?: number | null
           min_hours_for_replacement?: number | null
-          openai_api_key?: string | null
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
