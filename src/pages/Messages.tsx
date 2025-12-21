@@ -399,10 +399,11 @@ export default function Messages() {
           )}
         </div>
 
-        {/* Desktop: Side by side layout */}
-        <div className="hidden lg:grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-1">
-            <CardHeader className="pb-3">
+        {/* Desktop: Side by side layout - Chat style */}
+        <div className="hidden lg:grid gap-6 lg:grid-cols-3 h-[calc(100vh-320px)]">
+          {/* Conversation List */}
+          <Card className="lg:col-span-1 flex flex-col overflow-hidden">
+            <CardHeader className="pb-3 shrink-0">
               <CardTitle className="text-lg">Conversas</CardTitle>
               <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -414,8 +415,8 @@ export default function Messages() {
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[500px]">
+            <CardContent className="p-0 flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
                 {filteredConversations.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground">
                     Nenhuma conversa encontrada
@@ -456,19 +457,29 @@ export default function Messages() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 flex flex-col">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                {selectedConversation ? selectedConversation.patientName : 'Selecione uma conversa'}
-              </CardTitle>
-              {selectedConversation && (
-                <CardDescription>{selectedConversation.patientPhone}</CardDescription>
+          {/* Chat Area */}
+          <Card className="lg:col-span-2 flex flex-col overflow-hidden">
+            <CardHeader className="pb-3 shrink-0 border-b">
+              {selectedConversation ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-medium text-primary">
+                      {selectedConversation.patientName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{selectedConversation.patientName}</CardTitle>
+                    <CardDescription>{selectedConversation.patientPhone}</CardDescription>
+                  </div>
+                </div>
+              ) : (
+                <CardTitle className="text-lg text-muted-foreground">Selecione uma conversa</CardTitle>
               )}
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
+            <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
               {selectedConversation ? (
                 <>
-                  <ScrollArea className="flex-1 h-[400px] pr-4 mb-4">
+                  <ScrollArea className="flex-1 p-4">
                     <div className="space-y-4">
                       {selectedConversation.messages
                         .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
@@ -483,7 +494,7 @@ export default function Messages() {
                             >
                               <div
                                 className={cn(
-                                  'max-w-[80%] rounded-2xl px-4 py-3',
+                                  'max-w-[70%] rounded-2xl px-4 py-3',
                                   isOutbound
                                     ? 'bg-primary text-primary-foreground rounded-br-md'
                                     : 'bg-muted rounded-bl-md'
@@ -508,14 +519,15 @@ export default function Messages() {
                     </div>
                   </ScrollArea>
                   
-                  {/* Manual message input */}
-                  <div className="border-t border-border/50 pt-4">
-                    <div className="flex gap-2">
+                  {/* Message Input */}
+                  <div className="border-t p-4 shrink-0">
+                    <div className="flex gap-3 items-end">
                       <Textarea
-                        placeholder="Digite sua mensagem para atendimento manual..."
+                        placeholder="Digite sua mensagem..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        className="min-h-[80px] resize-none"
+                        className="min-h-[50px] max-h-[120px] resize-none"
+                        rows={1}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
@@ -526,25 +538,27 @@ export default function Messages() {
                       <Button
                         onClick={handleSendMessage}
                         disabled={!newMessage.trim() || sending}
+                        size="lg"
                         className="shrink-0"
                       >
                         {sending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <Send className="w-4 h-4" />
+                          <Send className="w-5 h-5" />
                         )}
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Pressione Enter para enviar ou Shift+Enter para nova linha
+                      Enter para enviar • Shift+Enter para nova linha
                     </p>
                   </div>
                 </>
               ) : (
-                <div className="h-[500px] flex items-center justify-center text-muted-foreground">
+                <div className="flex-1 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                    <p>Selecione uma conversa para ver as mensagens</p>
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                    <p className="text-lg">Selecione uma conversa</p>
+                    <p className="text-sm mt-1">para ver as mensagens</p>
                   </div>
                 </div>
               )}
