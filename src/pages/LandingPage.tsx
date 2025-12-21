@@ -116,12 +116,12 @@ const testimonials = [
 ];
 
 const targetAudience = [
-  { icon: "🏥", title: "Clínicas médicas" },
-  { icon: "🦷", title: "Consultórios odontológicos" },
-  { icon: "💆", title: "Estéticas e spas" },
-  { icon: "🧠", title: "Psicólogos e terapeutas" },
-  { icon: "💪", title: "Fisioterapeutas" },
-  { icon: "👁️", title: "Oftalmologistas" }
+  { title: "Clínicas médicas" },
+  { title: "Consultórios odontológicos" },
+  { title: "Estéticas e spas" },
+  { title: "Psicólogos e terapeutas" },
+  { title: "Fisioterapeutas" },
+  { title: "Oftalmologistas" }
 ];
 
 const faqs = [
@@ -479,7 +479,6 @@ export default function LandingPage() {
                 key={index} 
                 className="bg-background rounded-xl p-6 text-center hover:shadow-lg transition-shadow border"
               >
-                <span className="text-4xl mb-3 block">{item.icon}</span>
                 <span className="text-sm font-medium">{item.title}</span>
               </div>
             ))}
@@ -492,7 +491,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              ⭐ O Que Nossos Clientes Dizem
+              O Que Nossos Clientes Dizem
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Profissionais que já transformaram suas clínicas
@@ -507,7 +506,7 @@ export default function LandingPage() {
       <section className="py-12 bg-destructive text-destructive-foreground">
         <div className="container mx-auto px-4 text-center">
           <h3 className="text-2xl md:text-3xl font-bold mb-2">
-            🚨 OFERTA POR TEMPO LIMITADO!
+            OFERTA POR TEMPO LIMITADO
           </h3>
           <p className="text-lg mb-6 opacity-90">
             Preço promocional encerra em:
@@ -529,7 +528,7 @@ export default function LandingPage() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
-            ✅ Incluso em todos os planos
+            Incluso em todos os planos
           </h2>
           <p className="text-center text-muted-foreground mb-10 max-w-2xl mx-auto">
             Acesso completo a todas as funcionalidades, sem surpresas
