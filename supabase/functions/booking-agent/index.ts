@@ -55,6 +55,59 @@ async function refreshGoogleToken(
   }
 }
 
+// Fetch Google Calendar events to check availability
+async function fetchGoogleCalendarEvents(
+  accessToken: string,
+  calendarId: string,
+  timeMin: string,
+  timeMax: string
+): Promise<{ start: string; end: string }[]> {
+  try {
+    const params = new URLSearchParams({
+      timeMin,
+      timeMax,
+      singleEvents: 'true',
+      orderBy: 'startTime',
+    })
+    
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Failed to fetch calendar events:', errorText)
+      return []
+    }
+
+    const data = await response.json()
+    const events: { start: string; end: string }[] = []
+    
+    for (const item of data.items || []) {
+      // Skip all-day events (they have date instead of dateTime)
+      if (item.start?.dateTime && item.end?.dateTime) {
+        events.push({
+          start: item.start.dateTime,
+          end: item.end.dateTime,
+        })
+      }
+    }
+    
+    console.log(`Fetched ${events.length} calendar events for availability check`)
+    return events
+  } catch (error) {
+    console.error('Error fetching calendar events:', error)
+    return []
+  }
+}
+
 async function createGoogleCalendarEvent(
   accessToken: string,
   calendarId: string,
@@ -200,25 +253,95 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get available slots from appointments (simplified - in production would check Google Calendar)
+    // Get available slots from appointments AND Google Calendar
     const today = new Date()
     const nextWeek = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
 
     const { data: existingAppointments } = await supabase
       .from('appointments')
-      .select('scheduled_at')
+      .select('scheduled_at, duration_minutes')
       .eq('tenant_id', tenantId)
       .gte('scheduled_at', today.toISOString())
       .lte('scheduled_at', nextWeek.toISOString())
       .in('status', ['pending', 'confirmed'])
 
-    // Generate available slots based on business hours
-    const availableSlots = generateAvailableSlots(
+    // Collect all booked time ranges
+    const bookedRanges: { start: Date; end: Date }[] = []
+    
+    // Add appointments from database
+    for (const apt of existingAppointments || []) {
+      const start = new Date(apt.scheduled_at)
+      const duration = apt.duration_minutes || tenantSettings.appointment_duration_minutes || 30
+      const end = new Date(start.getTime() + duration * 60 * 1000)
+      bookedRanges.push({ start, end })
+    }
+
+    // Fetch Google Calendar events if connected
+    if (tenantSettings.google_calendar_connected && 
+        tenantSettings.google_calendar_id && 
+        tenantSettings.google_access_token &&
+        GOOGLE_CLIENT_ID && 
+        GOOGLE_CLIENT_SECRET) {
+      
+      let accessToken = tenantSettings.google_access_token
+      
+      // Check if token is expired and refresh if needed
+      if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
+        const expiresAt = new Date(tenantSettings.google_token_expires_at)
+        const now = new Date()
+        
+        if (now >= expiresAt) {
+          console.log('Access token expired for availability check, refreshing...')
+          const refreshed = await refreshGoogleToken(
+            tenantSettings.google_refresh_token,
+            GOOGLE_CLIENT_ID,
+            GOOGLE_CLIENT_SECRET
+          )
+          
+          if (refreshed) {
+            accessToken = refreshed.access_token
+            const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+            
+            // Update token in database
+            await supabase
+              .from('tenant_settings')
+              .update({
+                google_access_token: accessToken,
+                google_token_expires_at: newExpiresAt,
+              })
+              .eq('tenant_id', tenantId)
+            
+            console.log('Token refreshed for availability check')
+          }
+        }
+      }
+      
+      // Fetch calendar events
+      const calendarEvents = await fetchGoogleCalendarEvents(
+        accessToken,
+        tenantSettings.google_calendar_id,
+        today.toISOString(),
+        nextWeek.toISOString()
+      )
+      
+      // Add calendar events to booked ranges
+      for (const event of calendarEvents) {
+        bookedRanges.push({
+          start: new Date(event.start),
+          end: new Date(event.end),
+        })
+      }
+      
+      console.log(`Total booked ranges: ${bookedRanges.length} (${existingAppointments?.length || 0} from DB, ${calendarEvents.length} from Calendar)`)
+    }
+
+    // Generate available slots based on business hours and all booked ranges
+    const availableSlots = generateAvailableSlotsWithRanges(
       tenantSettings.business_hours_start || '08:00',
       tenantSettings.business_hours_end || '18:00',
       tenantSettings.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
       tenantSettings.appointment_duration_minutes || 30,
-      existingAppointments?.map(a => a.scheduled_at) || []
+      bookedRanges
     )
 
     // Get current year for the prompt
@@ -556,12 +679,13 @@ function normalizePhone(input: unknown): string {
   return str.replace(/\D/g, '')
 }
 
-function generateAvailableSlots(
+// New function that checks against time ranges (more accurate)
+function generateAvailableSlotsWithRanges(
   startTime: string,
   endTime: string,
   workingDays: string[],
   durationMinutes: number,
-  bookedSlots: string[]
+  bookedRanges: { start: Date; end: Date }[]
 ): { date: string; time: string; formatted: string }[] {
   const slots: { date: string; time: string; formatted: string }[] = []
   const today = new Date()
@@ -589,11 +713,11 @@ function generateAvailableSlots(
     
     while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
       const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`
-      const slotDateTime = `${dateStr}T${timeStr}:00`
+      const slotStart = new Date(`${dateStr}T${timeStr}:00`)
+      const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000)
       
       // Check if slot is in the past
-      const slotDate = new Date(slotDateTime)
-      if (slotDate <= today) {
+      if (slotStart <= today) {
         currentMin += durationMinutes
         if (currentMin >= 60) {
           currentHour += Math.floor(currentMin / 60)
@@ -602,10 +726,10 @@ function generateAvailableSlots(
         continue
       }
       
-      // Check if slot is booked
-      const isBooked = bookedSlots.some(booked => {
-        const bookedDate = new Date(booked)
-        return Math.abs(bookedDate.getTime() - slotDate.getTime()) < durationMinutes * 60 * 1000
+      // Check if slot overlaps with any booked range
+      const isBooked = bookedRanges.some(range => {
+        // Overlap: slot starts before range ends AND slot ends after range starts
+        return slotStart < range.end && slotEnd > range.start
       })
       
       if (!isBooked) {
@@ -624,4 +748,20 @@ function generateAvailableSlots(
   }
   
   return slots
+}
+
+// Keep legacy function for backward compatibility
+function generateAvailableSlots(
+  startTime: string,
+  endTime: string,
+  workingDays: string[],
+  durationMinutes: number,
+  bookedSlots: string[]
+): { date: string; time: string; formatted: string }[] {
+  const bookedRanges = bookedSlots.map(slot => {
+    const start = new Date(slot)
+    const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
+    return { start, end }
+  })
+  return generateAvailableSlotsWithRanges(startTime, endTime, workingDays, durationMinutes, bookedRanges)
 }
