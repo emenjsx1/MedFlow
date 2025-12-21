@@ -59,14 +59,16 @@ export default function Messages() {
 
   const loadMessages = async () => {
     try {
+      // Use left join to include messages even without patient_id
       const { data, error } = await supabase
         .from('messages')
-        .select(`*, patient:patients(name, whatsapp)`)
+        .select(`*, patient:patients!left(name, whatsapp)`)
         .eq('tenant_id', tenantId)
         .order('sent_at', { ascending: false })
         .limit(500);
 
       if (error) throw error;
+      console.log('Messages loaded:', data?.length || 0);
       setMessages(data || []);
     } catch (error) {
       console.error('Error loading messages:', error);
