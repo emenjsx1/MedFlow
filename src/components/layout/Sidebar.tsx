@@ -175,11 +175,13 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         </div>
         <Button
           variant="ghost"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('Logout button clicked');
             signOut();
             if (onClose) onClose();
           }}
-          className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+          className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 relative z-[60]"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sair
