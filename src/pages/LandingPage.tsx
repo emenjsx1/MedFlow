@@ -142,16 +142,16 @@ function CountdownTimer() {
     const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
     return () => clearInterval(timer);
   }, []);
-  return <div className="flex items-center justify-center gap-2 text-2xl md:text-3xl font-bold">
-      <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
+  return <div className="flex items-center justify-center gap-1 sm:gap-2 text-lg sm:text-2xl md:text-3xl font-bold">
+      <div className="bg-background text-foreground px-2 sm:px-3 py-1 sm:py-2 rounded-lg min-w-[45px] sm:min-w-[60px] text-center">
         {String(timeLeft.hours).padStart(2, '0')}h
       </div>
       <span>:</span>
-      <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
+      <div className="bg-background text-foreground px-2 sm:px-3 py-1 sm:py-2 rounded-lg min-w-[45px] sm:min-w-[60px] text-center">
         {String(timeLeft.minutes).padStart(2, '0')}m
       </div>
       <span>:</span>
-      <div className="bg-background text-foreground px-3 py-2 rounded-lg min-w-[60px] text-center">
+      <div className="bg-background text-foreground px-2 sm:px-3 py-1 sm:py-2 rounded-lg min-w-[45px] sm:min-w-[60px] text-center">
         {String(timeLeft.seconds).padStart(2, '0')}s
       </div>
     </div>;
@@ -164,42 +164,42 @@ function TestimonialCarousel() {
     const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
   }, []);
-  return <div className="relative max-w-4xl mx-auto">
+  return <div className="relative max-w-4xl mx-auto px-2 sm:px-0">
       <div className="overflow-hidden">
         <div className="flex transition-transform duration-500 ease-in-out" style={{
         transform: `translateX(-${current * 100}%)`
       }}>
-          {testimonials.map((testimonial, index) => <div key={index} className="w-full flex-shrink-0 px-4">
+          {testimonials.map((testimonial, index) => <div key={index} className="w-full flex-shrink-0 px-1 sm:px-4">
               <Card className="bg-background border-2">
-                <CardContent className="pt-8 pb-6 px-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <img src={testimonial.image} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary" />
+                <CardContent className="pt-4 sm:pt-8 pb-4 sm:pb-6 px-4 sm:px-8">
+                  <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <img src={testimonial.image} alt={testimonial.name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-primary" />
                     <div>
-                      <h4 className="font-semibold text-lg">{testimonial.name}</h4>
-                      <p className="text-muted-foreground">{testimonial.role}</p>
+                      <h4 className="font-semibold text-sm sm:text-lg">{testimonial.name}</h4>
+                      <p className="text-xs sm:text-base text-muted-foreground">{testimonial.role}</p>
                       <div className="flex gap-0.5 mt-1">
                         {Array.from({
                       length: testimonial.rating
-                    }).map((_, i) => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}
+                    }).map((_, i) => <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />)}
                       </div>
                     </div>
                   </div>
-                  <p className="text-lg italic text-muted-foreground">"{testimonial.text}"</p>
+                  <p className="text-sm sm:text-lg italic text-muted-foreground">"{testimonial.text}"</p>
                 </CardContent>
               </Card>
             </div>)}
         </div>
       </div>
 
-      <button onClick={prev} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors">
-        <ChevronLeft className="w-5 h-5" />
+      <button onClick={prev} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 sm:-translate-x-4 w-8 h-8 sm:w-10 sm:h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors z-10">
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
-      <button onClick={next} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors">
-        <ChevronRight className="w-5 h-5" />
+      <button onClick={next} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 sm:translate-x-4 w-8 h-8 sm:w-10 sm:h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors z-10">
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
-      <div className="flex justify-center gap-2 mt-6">
-        {testimonials.map((_, index) => <button key={index} onClick={() => setCurrent(index)} className={`w-2.5 h-2.5 rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-muted-foreground/30'}`} />)}
+      <div className="flex justify-center gap-2 mt-4 sm:mt-6">
+        {testimonials.map((_, index) => <button key={index} onClick={() => setCurrent(index)} className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-muted-foreground/30'}`} />)}
       </div>
     </div>;
 }
@@ -358,17 +358,17 @@ export default function LandingPage() {
       behavior: 'smooth'
     });
   };
-  return <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <SimpleLogo size="md" />
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <SimpleLogo size="sm" />
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex text-sm">
                 Planos
               </Button>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" onClick={() => navigate('/login')}>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-3 sm:px-4" onClick={() => navigate('/login')}>
                 Entrar
               </Button>
             </div>
@@ -380,20 +380,20 @@ export default function LandingPage() {
       
 
       {/* Hero Section */}
-      <section className="md:py-20 overflow-hidden py-[40px] pb-[4px]">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center pb-0">
-            <Badge variant="secondary" className="mb-6">
+      <section className="py-8 sm:py-12 md:py-20 overflow-hidden">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge variant="secondary" className="mb-4 sm:mb-6 text-xs sm:text-sm">
               <Sparkles className="w-3 h-3 mr-1" />
               Automação inteligente para clínicas
             </Badge>
 
-            <h1 className="md:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-tight py-0 text-2xl font-sans text-center">
+            <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black tracking-tight mb-4 sm:mb-6 leading-tight">
               Elimine as faltas, automatize confirmações e{" "}
               <span className="text-primary">aumente o faturamento</span>
             </h1>
 
-            <p className="md:text-xl text-muted-foreground mb-8 max-w-3xl py-0 px-0 mx-px my-px text-sm">
+            <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-3xl mx-auto px-2">
               Chega de{" "}
               <span className="font-semibold text-foreground">pacientes que não aparecem</span>,{" "}
               <span className="font-semibold text-foreground">WhatsApp tocando fora de hora</span> e{" "}
@@ -404,17 +404,17 @@ export default function LandingPage() {
       </section>
 
       {/* VSL Section */}
-      <section className="pb-16">
-        <div className="container mx-auto px-4">
+      <section className="pb-10 sm:pb-16">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
           <div className="max-w-4xl mx-auto">
-            <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-2xl overflow-hidden shadow-2xl border relative">
+            <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl border relative">
               <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
-                  <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mx-auto mb-4 cursor-pointer hover:scale-105 transition-transform shadow-lg">
-                    <Play className="w-10 h-10 text-primary-foreground ml-1" />
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-primary flex items-center justify-center mx-auto mb-3 sm:mb-4 cursor-pointer hover:scale-105 transition-transform shadow-lg">
+                    <Play className="w-6 h-6 sm:w-10 sm:h-10 text-primary-foreground ml-1" />
                   </div>
-                  <p className="text-lg font-medium">Clique para assistir</p>
-                  <p className="text-sm mt-1 opacity-60">Veja como funciona em 2 minutos</p>
+                  <p className="text-sm sm:text-lg font-medium">Clique para assistir</p>
+                  <p className="text-xs sm:text-sm mt-1 opacity-60">Veja como funciona em 2 minutos</p>
                 </div>
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
@@ -422,8 +422,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex justify-center mt-6">
-              <Button size="lg" className="gap-2 text-base px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" onClick={scrollToPricing}>
+            <div className="flex justify-center mt-4 sm:mt-6">
+              <Button size="lg" className="gap-2 text-sm sm:text-base px-4 sm:px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full sm:w-auto" onClick={scrollToPricing}>
                 Quero automatizar minha clínica
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -433,63 +433,63 @@ export default function LandingPage() {
       </section>
 
       {/* How it Works */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+      <section className="py-10 sm:py-16 bg-muted/30">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
               100% Online e Automatizado
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
               Acesse de qualquer lugar, a qualquer hora. Sua clínica no piloto automático.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl sm:text-2xl font-bold mx-auto mb-4 sm:mb-6 shadow-lg">
                 1
               </div>
-              <h3 className="text-xl font-semibold mb-2">Conecte seu WhatsApp</h3>
-              <p className="text-muted-foreground">Em menos de 5 minutos você conecta sua conta</p>
+              <h3 className="text-base sm:text-xl font-semibold mb-2">Conecte seu WhatsApp</h3>
+              <p className="text-sm text-muted-foreground">Em menos de 5 minutos você conecta sua conta</p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl sm:text-2xl font-bold mx-auto mb-4 sm:mb-6 shadow-lg">
                 2
               </div>
-              <h3 className="text-xl font-semibold mb-2">IA assume o atendimento</h3>
-              <p className="text-muted-foreground">Nossa IA responde, agenda e confirma consultas automaticamente</p>
+              <h3 className="text-base sm:text-xl font-semibold mb-2">IA assume o atendimento</h3>
+              <p className="text-sm text-muted-foreground">Nossa IA responde, agenda e confirma consultas automaticamente</p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl sm:text-2xl font-bold mx-auto mb-4 sm:mb-6 shadow-lg">
                 3
               </div>
-              <h3 className="text-xl font-semibold mb-2">Foque no que importa</h3>
-              <p className="text-muted-foreground">Você atende seus pacientes enquanto a tecnologia cuida do resto</p>
+              <h3 className="text-base sm:text-xl font-semibold mb-2">Foque no que importa</h3>
+              <p className="text-sm text-muted-foreground">Você atende seus pacientes enquanto a tecnologia cuida do resto</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Grid */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+      <section className="py-10 sm:py-16">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
               Funcionalidades Completas
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
               Tudo o que você precisa para gerenciar sua clínica em um só lugar
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
             {features.map((feature, index) => <Card key={index} className="bg-background hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-primary" />
+                <CardHeader className="p-4 sm:p-6">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
+                    <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">{feature.title}</CardTitle>
+                  <CardDescription className="text-sm">{feature.description}</CardDescription>
                 </CardHeader>
               </Card>)}
           </div>
@@ -497,33 +497,33 @@ export default function LandingPage() {
       </section>
 
       {/* Target Audience */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+      <section className="py-10 sm:py-16 bg-muted/30">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
               Para quem é o AgendaClin?
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
               Ideal para qualquer profissional de saúde que quer automatizar agendamentos
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
-            {targetAudience.map((item, index) => <div key={index} className="bg-background rounded-xl p-6 text-center hover:shadow-lg transition-shadow border">
-                <span className="text-sm font-medium">{item.title}</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 max-w-5xl mx-auto">
+            {targetAudience.map((item, index) => <div key={index} className="bg-background rounded-xl p-4 sm:p-6 text-center hover:shadow-lg transition-shadow border">
+                <span className="text-xs sm:text-sm font-medium">{item.title}</span>
               </div>)}
           </div>
         </div>
       </section>
 
       {/* Testimonials Carousel */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+      <section className="py-10 sm:py-16">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
               O Que Nossos Clientes Dizem
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
               Profissionais que já transformaram suas clínicas
             </p>
           </div>
@@ -533,16 +533,16 @@ export default function LandingPage() {
       </section>
 
       {/* Urgency Banner */}
-      <section className="py-12 bg-destructive text-destructive-foreground">
-        <div className="container mx-auto px-4 text-center">
-          <h3 className="md:text-3xl font-bold mb-2 text-xl">
+      <section className="py-8 sm:py-12 bg-destructive text-destructive-foreground">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto text-center">
+          <h3 className="text-lg sm:text-xl md:text-3xl font-bold mb-2">
             OFERTA POR TEMPO LIMITADO
           </h3>
-          <p className="text-lg mb-6 opacity-90">
+          <p className="text-sm sm:text-lg mb-4 sm:mb-6 opacity-90">
             Preço promocional encerra em:
           </p>
           <CountdownTimer />
-          <Button size="lg" variant="secondary" className="mt-6 gap-2 font-semibold" onClick={scrollToPricing}>
+          <Button size="lg" variant="secondary" className="mt-4 sm:mt-6 gap-2 font-semibold text-sm sm:text-base w-full sm:w-auto" onClick={scrollToPricing}>
             Garantir minha vaga
             <ArrowRight className="w-4 h-4" />
           </Button>
@@ -550,61 +550,61 @@ export default function LandingPage() {
       </section>
 
       {/* What's Included */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
+      <section className="py-10 sm:py-16">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-3 sm:mb-4">
             Incluso em todos os planos
           </h2>
-          <p className="text-center text-muted-foreground mb-10 max-w-2xl mx-auto">
+          <p className="text-center text-sm sm:text-base text-muted-foreground mb-6 sm:mb-10 max-w-2xl mx-auto px-2">
             Acesso completo a todas as funcionalidades, sem surpresas
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-            {allFeatures.map((feature, index) => <div key={index} className="flex items-center gap-3 bg-muted/50 p-4 rounded-xl">
-                <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                <span className="text-sm font-medium">{feature}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-5xl mx-auto">
+            {allFeatures.map((feature, index) => <div key={index} className="flex items-center gap-2 sm:gap-3 bg-muted/50 p-3 sm:p-4 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-medium">{feature}</span>
               </div>)}
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+      <section id="pricing" className="py-10 sm:py-16 bg-muted/30">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
               Escolha seu plano e comece agora
             </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
               ⚡Todos os planos estão com desconto nesse momento⚡
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map(plan => <Card key={plan.id} className={`relative ${plan.popular ? 'border-primary shadow-xl ring-2 ring-primary/20 scale-105 z-10' : ''}`}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 max-w-5xl mx-auto">
+            {plans.map(plan => <Card key={plan.id} className={`relative ${plan.popular ? 'border-primary shadow-xl ring-2 ring-primary/20 md:scale-105 z-10' : ''}`}>
                 {plan.hot && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-destructive text-destructive-foreground shadow-lg gap-1">
+                    <Badge className="bg-destructive text-destructive-foreground shadow-lg gap-1 text-xs">
                       <Flame className="w-3 h-3" />
                       Mais Escolhido
                     </Badge>
                   </div>}
-                <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="py-4">
+                <CardHeader className="text-center pb-2 p-4 sm:p-6">
+                  <CardTitle className="text-xl sm:text-2xl">{plan.name}</CardTitle>
+                  <CardDescription className="text-sm">{plan.description}</CardDescription>
+                  <div className="py-3 sm:py-4">
                     <div className="flex items-center justify-center gap-2 mb-1">
-                      <span className="text-lg text-muted-foreground line-through">
+                      <span className="text-sm sm:text-lg text-muted-foreground line-through">
                         R$ {plan.originalPrice}
                       </span>
                     </div>
-                    <span className="text-4xl font-bold text-primary">R$ {plan.price}</span>
-                    <span className="text-muted-foreground">/{plan.interval}</span>
+                    <span className="text-3xl sm:text-4xl font-bold text-primary">R$ {plan.price}</span>
+                    <span className="text-sm text-muted-foreground">/{plan.interval}</span>
                   </div>
-                  {plan.savings && <Badge variant="secondary" className={`${plan.id === 'annual' ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'}`}>
+                  {plan.savings && <Badge variant="secondary" className={`text-xs ${plan.id === 'annual' ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'}`}>
                       {plan.savings}
                     </Badge>}
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
                   <div className="space-y-2">
-                    {plan.features.slice(0, 6).map((feature, idx) => <div key={idx} className="flex items-center gap-2 text-sm">
+                    {plan.features.slice(0, 6).map((feature, idx) => <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm">
                         <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                         <span>{feature}</span>
                       </div>)}
@@ -612,7 +612,7 @@ export default function LandingPage() {
                       + mais {plan.features.length - 6} funcionalidades
                     </p>
                   </div>
-                  <Button className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan)}>
+                  <Button className={`w-full text-sm sm:text-base ${plan.popular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan)}>
                     Quero Este Plano
                   </Button>
                 </CardContent>
@@ -622,33 +622,33 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+      <section className="py-10 sm:py-16">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
               Perguntas Frequentes
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
               Tire suas dúvidas sobre o AgendaClin
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto space-y-3">
+          <div className="max-w-3xl mx-auto space-y-2 sm:space-y-3">
             {faqs.map((faq, index) => <FAQItem key={index} question={faq.question} answer={faq.answer} />)}
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-16 bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+      <section className="py-10 sm:py-16 bg-primary text-primary-foreground">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
             Sua agenda no piloto automático
           </h2>
-          <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
+          <p className="text-sm sm:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 px-2">
             Enquanto você descansa, a IA continua agendando e atendendo seus pacientes
           </p>
-          <Button size="lg" variant="secondary" className="gap-2 font-semibold" onClick={scrollToPricing}>
+          <Button size="lg" variant="secondary" className="gap-2 font-semibold text-sm sm:text-base w-full sm:w-auto" onClick={scrollToPricing}>
             Quero Automatizar Minha Clínica
             <ArrowRight className="w-4 h-4" />
           </Button>
@@ -656,14 +656,14 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="border-t py-6 sm:py-8 bg-background">
+        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
+          <div className="flex flex-col items-center gap-4 text-center">
             <SimpleLogo size="sm" />
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               AgendaClin — o sistema que transforma desorganização em lucro
             </p>
-            <div className="flex gap-4 text-sm text-muted-foreground">
+            <div className="flex gap-4 text-xs sm:text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Termos</a>
               <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
             </div>
