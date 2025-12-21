@@ -253,96 +253,212 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch professionals for this tenant
+    const { data: professionals } = await supabase
+      .from('professionals')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .order('name')
+
+    const hasProfessionals = professionals && professionals.length > 0
+    console.log(`Found ${professionals?.length || 0} active professionals`)
+
     // Get available slots from appointments AND Google Calendar
     const today = new Date()
     const nextWeek = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
 
-    const { data: existingAppointments } = await supabase
-      .from('appointments')
-      .select('scheduled_at, duration_minutes')
-      .eq('tenant_id', tenantId)
-      .gte('scheduled_at', today.toISOString())
-      .lte('scheduled_at', nextWeek.toISOString())
-      .in('status', ['pending', 'confirmed'])
-
-    // Collect all booked time ranges
-    const bookedRanges: { start: Date; end: Date }[] = []
-    
-    // Add appointments from database
-    for (const apt of existingAppointments || []) {
-      const start = new Date(apt.scheduled_at)
-      const duration = apt.duration_minutes || tenantSettings.appointment_duration_minutes || 30
-      const end = new Date(start.getTime() + duration * 60 * 1000)
-      bookedRanges.push({ start, end })
+    // Build slots per professional (or single global slot list if no professionals)
+    interface SlotInfo {
+      date: string
+      time: string
+      formatted: string
+      professionalId?: string
+      professionalName?: string
     }
+    
+    let availableSlots: SlotInfo[] = []
+    
+    if (hasProfessionals) {
+      // Generate slots for each professional
+      for (const prof of professionals!) {
+        // Get appointments for this professional
+        const { data: profAppointments } = await supabase
+          .from('appointments')
+          .select('scheduled_at, duration_minutes')
+          .eq('tenant_id', tenantId)
+          .eq('professional_id', prof.id)
+          .gte('scheduled_at', today.toISOString())
+          .lte('scheduled_at', nextWeek.toISOString())
+          .in('status', ['pending', 'confirmed'])
 
-    // Fetch Google Calendar events if connected
-    if (tenantSettings.google_calendar_connected && 
-        tenantSettings.google_calendar_id && 
-        tenantSettings.google_access_token &&
-        GOOGLE_CLIENT_ID && 
-        GOOGLE_CLIENT_SECRET) {
-      
-      let accessToken = tenantSettings.google_access_token
-      
-      // Check if token is expired and refresh if needed
-      if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
-        const expiresAt = new Date(tenantSettings.google_token_expires_at)
-        const now = new Date()
+        const bookedRanges: { start: Date; end: Date }[] = []
         
-        if (now >= expiresAt) {
-          console.log('Access token expired for availability check, refreshing...')
-          const refreshed = await refreshGoogleToken(
-            tenantSettings.google_refresh_token,
-            GOOGLE_CLIENT_ID,
-            GOOGLE_CLIENT_SECRET
+        // Add appointments from database
+        for (const apt of profAppointments || []) {
+          const start = new Date(apt.scheduled_at)
+          const duration = apt.duration_minutes || prof.appointment_duration_minutes || 30
+          const end = new Date(start.getTime() + duration * 60 * 1000)
+          bookedRanges.push({ start, end })
+        }
+
+        // Fetch Google Calendar events for this professional or main calendar
+        const calendarId = prof.google_calendar_id || tenantSettings.google_calendar_id
+        if (tenantSettings.google_calendar_connected && 
+            calendarId && 
+            tenantSettings.google_access_token &&
+            GOOGLE_CLIENT_ID && 
+            GOOGLE_CLIENT_SECRET) {
+          
+          let accessToken = tenantSettings.google_access_token
+          
+          // Check if token is expired and refresh if needed
+          if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
+            const expiresAt = new Date(tenantSettings.google_token_expires_at)
+            const now = new Date()
+            
+            if (now >= expiresAt) {
+              const refreshed = await refreshGoogleToken(
+                tenantSettings.google_refresh_token,
+                GOOGLE_CLIENT_ID,
+                GOOGLE_CLIENT_SECRET
+              )
+              
+              if (refreshed) {
+                accessToken = refreshed.access_token
+                const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+                
+                await supabase
+                  .from('tenant_settings')
+                  .update({
+                    google_access_token: accessToken,
+                    google_token_expires_at: newExpiresAt,
+                  })
+                  .eq('tenant_id', tenantId)
+              }
+            }
+          }
+          
+          const calendarEvents = await fetchGoogleCalendarEvents(
+            accessToken,
+            calendarId,
+            today.toISOString(),
+            nextWeek.toISOString()
           )
           
-          if (refreshed) {
-            accessToken = refreshed.access_token
-            const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
-            
-            // Update token in database
-            await supabase
-              .from('tenant_settings')
-              .update({
-                google_access_token: accessToken,
-                google_token_expires_at: newExpiresAt,
-              })
-              .eq('tenant_id', tenantId)
-            
-            console.log('Token refreshed for availability check')
+          for (const event of calendarEvents) {
+            bookedRanges.push({
+              start: new Date(event.start),
+              end: new Date(event.end),
+            })
           }
         }
+
+        // Generate slots for this professional
+        const profSlots = generateAvailableSlotsWithRanges(
+          prof.business_hours_start || '08:00',
+          prof.business_hours_end || '18:00',
+          prof.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+          prof.appointment_duration_minutes || 30,
+          bookedRanges
+        )
+
+        // Add professional info to slots
+        for (const slot of profSlots) {
+          availableSlots.push({
+            ...slot,
+            professionalId: prof.id,
+            professionalName: prof.name,
+          })
+        }
       }
+
+      // Sort by date/time, then by professional name
+      availableSlots.sort((a, b) => {
+        const dateCompare = `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)
+        if (dateCompare !== 0) return dateCompare
+        return (a.professionalName || '').localeCompare(b.professionalName || '')
+      })
+
+      console.log(`Total available slots across all professionals: ${availableSlots.length}`)
+    } else {
+      // No professionals - use tenant settings (legacy mode)
+      const { data: existingAppointments } = await supabase
+        .from('appointments')
+        .select('scheduled_at, duration_minutes')
+        .eq('tenant_id', tenantId)
+        .gte('scheduled_at', today.toISOString())
+        .lte('scheduled_at', nextWeek.toISOString())
+        .in('status', ['pending', 'confirmed'])
+
+      const bookedRanges: { start: Date; end: Date }[] = []
       
-      // Fetch calendar events
-      const calendarEvents = await fetchGoogleCalendarEvents(
-        accessToken,
-        tenantSettings.google_calendar_id,
-        today.toISOString(),
-        nextWeek.toISOString()
+      for (const apt of existingAppointments || []) {
+        const start = new Date(apt.scheduled_at)
+        const duration = apt.duration_minutes || tenantSettings.appointment_duration_minutes || 30
+        const end = new Date(start.getTime() + duration * 60 * 1000)
+        bookedRanges.push({ start, end })
+      }
+
+      if (tenantSettings.google_calendar_connected && 
+          tenantSettings.google_calendar_id && 
+          tenantSettings.google_access_token &&
+          GOOGLE_CLIENT_ID && 
+          GOOGLE_CLIENT_SECRET) {
+        
+        let accessToken = tenantSettings.google_access_token
+        
+        if (tenantSettings.google_token_expires_at && tenantSettings.google_refresh_token) {
+          const expiresAt = new Date(tenantSettings.google_token_expires_at)
+          const now = new Date()
+          
+          if (now >= expiresAt) {
+            const refreshed = await refreshGoogleToken(
+              tenantSettings.google_refresh_token,
+              GOOGLE_CLIENT_ID,
+              GOOGLE_CLIENT_SECRET
+            )
+            
+            if (refreshed) {
+              accessToken = refreshed.access_token
+              const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+              
+              await supabase
+                .from('tenant_settings')
+                .update({
+                  google_access_token: accessToken,
+                  google_token_expires_at: newExpiresAt,
+                })
+                .eq('tenant_id', tenantId)
+            }
+          }
+        }
+        
+        const calendarEvents = await fetchGoogleCalendarEvents(
+          accessToken,
+          tenantSettings.google_calendar_id,
+          today.toISOString(),
+          nextWeek.toISOString()
+        )
+        
+        for (const event of calendarEvents) {
+          bookedRanges.push({
+            start: new Date(event.start),
+            end: new Date(event.end),
+          })
+        }
+      }
+
+      const slots = generateAvailableSlotsWithRanges(
+        tenantSettings.business_hours_start || '08:00',
+        tenantSettings.business_hours_end || '18:00',
+        tenantSettings.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        tenantSettings.appointment_duration_minutes || 30,
+        bookedRanges
       )
       
-      // Add calendar events to booked ranges
-      for (const event of calendarEvents) {
-        bookedRanges.push({
-          start: new Date(event.start),
-          end: new Date(event.end),
-        })
-      }
-      
-      console.log(`Total booked ranges: ${bookedRanges.length} (${existingAppointments?.length || 0} from DB, ${calendarEvents.length} from Calendar)`)
+      availableSlots = slots.map(s => ({ ...s }))
     }
-
-    // Generate available slots based on business hours and all booked ranges
-    const availableSlots = generateAvailableSlotsWithRanges(
-      tenantSettings.business_hours_start || '08:00',
-      tenantSettings.business_hours_end || '18:00',
-      tenantSettings.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-      tenantSettings.appointment_duration_minutes || 30,
-      bookedRanges
-    )
 
     // Get current year for the prompt
     const currentYear = new Date().getFullYear()
@@ -357,6 +473,16 @@ Deno.serve(async (req) => {
       ? tenantSettings.agent_faqs.map(faq => `- "${faq.question}" → "${faq.answer}"`).join('\n')
       : ''
 
+    // Build professionals list for prompt
+    const professionalsInfo = hasProfessionals 
+      ? `\nPROFISSIONAIS DISPONÍVEIS:\n${professionals!.map(p => `- ${p.name}${p.specialty ? ` (${p.specialty})` : ''}`).join('\n')}\n`
+      : ''
+
+    // Format available slots for prompt (group by time to show which professionals are available)
+    const slotsForPrompt = hasProfessionals
+      ? availableSlots.slice(0, 20).map(s => `- ${s.formatted} com ${s.professionalName} (${s.date})`).join('\n')
+      : availableSlots.slice(0, 15).map(s => `- ${s.formatted} (${s.date})`).join('\n')
+
     // Build system prompt with improved instructions
     const systemPrompt = `Você é um assistente virtual de agendamento para a clínica "${tenantSettings.clinic_name || 'Nossa Clínica'}".
 
@@ -370,18 +496,18 @@ INFORMAÇÕES DA CLÍNICA:
 - Horário de funcionamento: ${tenantSettings.business_hours_start || '08:00'} às ${tenantSettings.business_hours_end || '18:00'}
 - Dias de funcionamento: ${(tenantSettings.working_days || []).join(', ')}
 - Duração das consultas: ${tenantSettings.appointment_duration_minutes || 30} minutos
-${businessContextSection}
+${professionalsInfo}${businessContextSection}
 HORÁRIOS DISPONÍVEIS PARA OS PRÓXIMOS 14 DIAS:
-${availableSlots.slice(0, 15).map(s => `- ${s.formatted} (${s.date})`).join('\n')}
-${availableSlots.length > 15 ? `\n... e mais ${availableSlots.length - 15} horários disponíveis.` : ''}
+${slotsForPrompt}
+${availableSlots.length > 20 ? `\n... e mais ${availableSlots.length - 20} horários disponíveis.` : ''}
 
 SUAS INSTRUÇÕES (SIGA RIGOROSAMENTE):
 1. Seja cordial e profissional
 2. Se o paciente perguntar sobre serviços, preços ou informações do negócio, use as informações em "SOBRE O NEGÓCIO" e nas "PERGUNTAS FREQUENTES CONFIGURADAS"
 3. Se não souber o nome do paciente, pergunte o nome COMPLETO primeiro
-4. Quando tiver o nome, sugira 3-5 horários disponíveis
+4. Quando tiver o nome, sugira 3-5 horários disponíveis${hasProfessionals ? ' mencionando o profissional disponível' : ''}
 5. Quando o paciente escolher um horário:
-   - MARQUE IMEDIATAMENTE usando: [AGENDAR: ${currentYear}-MM-DD HH:MM | NOME: Nome do Paciente]
+   - MARQUE IMEDIATAMENTE usando: [AGENDAR: ${currentYear}-MM-DD HH:MM | NOME: Nome do Paciente${hasProfessionals ? ' | PROFISSIONAL: Nome do Profissional' : ''}]
    - SEMPRE use o ano ${currentYear}!
 6. Se o paciente pedir um horário que NÃO está na lista de disponíveis:
    - Informe que o horário está ocupado
@@ -392,6 +518,8 @@ SUAS INSTRUÇÕES (SIGA RIGOROSAMENTE):
 8. Se o paciente quiser CANCELAR:
    - Confirme o cancelamento
    - Pergunte se deseja reagendar
+${hasProfessionals ? `9. Se o paciente pedir um profissional específico, mostre apenas horários desse profissional
+10. Se não especificar profissional, escolha o primeiro disponível no horário solicitado` : ''}
 
 PERGUNTAS FREQUENTES (responda diretamente):
 - "Qual o horário de funcionamento?" → "${tenantSettings.business_hours_start || '08:00'} às ${tenantSettings.business_hours_end || '18:00'}"
@@ -405,7 +533,7 @@ INFORMAÇÕES DO PACIENTE ATUAL:
 - Nome: ${patientName || 'Ainda não informado'}
 
 EXEMPLO DE AGENDAMENTO (use o ano ${currentYear}!):
-[AGENDAR: ${currentYear}-12-23 09:00 | NOME: João Silva]
+[AGENDAR: ${currentYear}-12-23 09:00 | NOME: João Silva${hasProfessionals ? ' | PROFISSIONAL: Dr. Carlos' : ''}]
 
 Responda de forma natural e amigável em português brasileiro.`
 
@@ -469,17 +597,55 @@ Responda de forma natural e amigável em português brasileiro.`
 
     console.log('AI reply:', reply)
 
-    // Check for booking command
-    const bookingMatch = reply.match(/\[AGENDAR:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*\|\s*NOME:\s*([^\]]+)\]/)
+    // Check for booking command - now supports optional PROFISSIONAL field
+    const bookingMatchWithProf = reply.match(/\[AGENDAR:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*\|\s*NOME:\s*([^|\]]+)\s*\|\s*PROFISSIONAL:\s*([^\]]+)\]/)
+    const bookingMatchSimple = reply.match(/\[AGENDAR:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*\|\s*NOME:\s*([^\]]+)\]/)
+    
+    const bookingMatch = bookingMatchWithProf || bookingMatchSimple
     let appointmentCreated = null
     let calendarEventId: string | null = null
 
     if (bookingMatch) {
-      const [, date, time, name] = bookingMatch
+      const [, date, time, nameRaw] = bookingMatch
+      const professionalNameFromAI = bookingMatchWithProf ? bookingMatchWithProf[4]?.trim() : null
+      const name = nameRaw.trim()
       const scheduledAt = `${date}T${time}:00`
-      const durationMinutes = tenantSettings.appointment_duration_minutes || 30
       
-      console.log('Creating appointment:', { date, time, name: name.trim(), scheduledAt })
+      // Find the professional to use
+      let selectedProfessional: { id: string; name: string; google_calendar_id: string | null; appointment_duration_minutes: number | null } | null = null
+      let durationMinutes = tenantSettings.appointment_duration_minutes || 30
+      
+      if (hasProfessionals && professionals) {
+        if (professionalNameFromAI) {
+          // Try to find the professional by name
+          selectedProfessional = professionals.find(p => 
+            p.name.toLowerCase().includes(professionalNameFromAI.toLowerCase()) ||
+            professionalNameFromAI.toLowerCase().includes(p.name.toLowerCase())
+          ) || null
+        }
+        
+        // If no specific professional found, find first available for this slot
+        if (!selectedProfessional) {
+          const slotForTime = availableSlots.find(s => s.date === date && s.time === time)
+          if (slotForTime?.professionalId) {
+            selectedProfessional = professionals.find(p => p.id === slotForTime.professionalId) || null
+          }
+        }
+        
+        // Fallback to first professional
+        if (!selectedProfessional && professionals.length > 0) {
+          selectedProfessional = professionals[0]
+        }
+        
+        if (selectedProfessional) {
+          durationMinutes = selectedProfessional.appointment_duration_minutes || 30
+        }
+      }
+      
+      console.log('Creating appointment:', { 
+        date, time, name, scheduledAt, 
+        professional: selectedProfessional?.name || 'none'
+      })
       
       // Find or create patient (reuse existing if possible)
       let bookingPatientId: string | null = patientId
@@ -495,14 +661,14 @@ Responda de forma natural e amigável em português brasileiro.`
         bookingPatientId = patientRow.id
         await supabase
           .from('patients')
-          .update({ name: name.trim() })
+          .update({ name: name })
           .eq('id', bookingPatientId)
       } else {
         const { data: newPatient, error: patientError } = await supabase
           .from('patients')
           .insert({
             tenant_id: tenantId,
-            name: name.trim(),
+            name: name,
             whatsapp: patientPhone,
           })
           .select('id')
@@ -520,8 +686,10 @@ Responda de forma natural e amigável em português brasileiro.`
       patientId = bookingPatientId
 
       // Create Google Calendar event if connected
+      const calendarIdToUse = selectedProfessional?.google_calendar_id || tenantSettings.google_calendar_id
+      
       if (tenantSettings.google_calendar_connected && 
-          tenantSettings.google_calendar_id && 
+          calendarIdToUse && 
           tenantSettings.google_access_token &&
           GOOGLE_CLIENT_ID && 
           GOOGLE_CLIENT_SECRET) {
@@ -566,10 +734,10 @@ Responda de forma natural e amigável em português brasileiro.`
         
         const calendarEvent = await createGoogleCalendarEvent(
           accessToken,
-          tenantSettings.google_calendar_id,
+          calendarIdToUse,
           {
-            summary: `Consulta: ${name.trim()}`,
-            description: `Paciente: ${name.trim()}\nTelefone: ${patientPhone}\n\nAgendado via WhatsApp`,
+            summary: `Consulta: ${name}${selectedProfessional ? ` - ${selectedProfessional.name}` : ''}`,
+            description: `Paciente: ${name}\nTelefone: ${patientPhone}${selectedProfessional ? `\nProfissional: ${selectedProfessional.name}` : ''}\n\nAgendado via WhatsApp`,
             start: `${date}T${time}:00`,
             end: `${date}T${endTime}:00`,
             attendeePhone: patientPhone,
@@ -590,19 +758,21 @@ Responda de forma natural e amigável em português brasileiro.`
         .insert({
           tenant_id: tenantId,
           patient_id: patientId,
-          patient_name: name.trim(),
+          patient_name: name,
           patient_phone: patientPhone,
           scheduled_at: scheduledAt,
           status: 'confirmed',
           duration_minutes: durationMinutes,
           calendar_event_id: calendarEventId,
+          professional_id: selectedProfessional?.id || null,
+          professional_name: selectedProfessional?.name || null,
         })
         .select()
         .single()
 
       if (!appointmentError && appointment) {
         appointmentCreated = appointment
-        console.log('Appointment created successfully:', appointment.id)
+        console.log('Appointment created successfully:', appointment.id, 'for professional:', selectedProfessional?.name)
       } else {
         console.error('Appointment creation error:', appointmentError)
       }
