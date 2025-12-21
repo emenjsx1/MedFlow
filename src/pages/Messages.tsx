@@ -51,9 +51,45 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Load messages and setup real-time subscription
   useEffect(() => {
     if (tenantId) {
       loadMessages();
+      
+      // Setup real-time subscription for new messages
+      const channel = supabase
+        .channel('messages-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `tenant_id=eq.${tenantId}`,
+          },
+          async (payload) => {
+            console.log('New message received:', payload);
+            // Fetch the new message with patient data
+            const { data: newMessage, error } = await supabase
+              .from('messages')
+              .select(`*, patient:patients!left(name, whatsapp)`)
+              .eq('id', payload.new.id)
+              .single();
+            
+            if (!error && newMessage) {
+              setMessages(prev => [newMessage, ...prev]);
+              toast({
+                title: 'Nova mensagem',
+                description: `${newMessage.direction === 'inbound' ? 'Recebida' : 'Enviada'}: ${newMessage.body.substring(0, 50)}...`,
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [tenantId]);
 
