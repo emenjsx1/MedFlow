@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatsCard from '@/components/dashboard/StatsCard';
 import AppointmentTable, { Appointment } from '@/components/dashboard/AppointmentTable';
+import DailyScheduleCalendar from '@/components/dashboard/DailyScheduleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -392,6 +393,12 @@ export default function Dashboard() {
             />
           </div>
         </div>
+
+        {/* Visual Calendar */}
+        <DailyScheduleCalendar
+          appointments={appointments}
+          professionals={professionals}
+        />
 
         {/* Table */}
         {filteredAppointments.length === 0 ? (
