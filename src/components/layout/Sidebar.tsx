@@ -59,15 +59,8 @@ const navItems = [
   },
 ];
 
-// Itens exclusivos para admin - não aparecem no menu normal
-const adminOnlyItems = [
-  {
-    label: 'Usuários',
-    href: '/users',
-    icon: Users,
-    roles: ['admin'],
-  },
-];
+// Itens exclusivos para admin - removido temporariamente até funcionalidade de convite estar pronta
+const adminOnlyItems: typeof navItems = [];
 
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { user, role, signOut } = useAuth();
