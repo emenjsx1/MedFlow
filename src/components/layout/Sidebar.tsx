@@ -7,6 +7,8 @@ import {
   LogOut,
   ClipboardList,
   MessageSquare,
+  UserCheck,
+  UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,18 @@ const navItems = [
     href: '/messages',
     icon: MessageSquare,
     roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Pacientes',
+    href: '/patients',
+    icon: UsersRound,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Profissionais',
+    href: '/professionals',
+    icon: UserCheck,
+    roles: ['admin'],
   },
   {
     label: 'Configurações',

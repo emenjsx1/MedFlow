@@ -25,6 +25,7 @@ export type Database = {
           patient_id: string | null
           patient_name: string
           patient_phone: string | null
+          professional_id: string | null
           professional_name: string | null
           risk_level: Database["public"]["Enums"]["risk_level"] | null
           scheduled_at: string
@@ -42,6 +43,7 @@ export type Database = {
           patient_id?: string | null
           patient_name: string
           patient_phone?: string | null
+          professional_id?: string | null
           professional_name?: string | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           scheduled_at: string
@@ -59,6 +61,7 @@ export type Database = {
           patient_id?: string | null
           patient_name?: string
           patient_phone?: string | null
+          professional_id?: string | null
           professional_name?: string | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           scheduled_at?: string
@@ -72,6 +75,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
           {
@@ -175,6 +185,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "patients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professionals: {
+        Row: {
+          appointment_duration_minutes: number | null
+          business_hours_end: string | null
+          business_hours_start: string | null
+          created_at: string | null
+          google_calendar_id: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          specialty: string | null
+          tenant_id: string
+          updated_at: string | null
+          working_days: string[] | null
+        }
+        Insert: {
+          appointment_duration_minutes?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          created_at?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          specialty?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          working_days?: string[] | null
+        }
+        Update: {
+          appointment_duration_minutes?: number | null
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          created_at?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          specialty?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          working_days?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professionals_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
