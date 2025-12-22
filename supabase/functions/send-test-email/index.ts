@@ -79,7 +79,7 @@ const getWelcomeEmailHtml = (userName: string, userEmail: string, password: stri
               
               <!-- Botão de acesso -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendaclin.lovable.app/login" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);">
+                <a href="https://agendacliin.lovable.app/login" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);">
                   Acessar Minha Conta →
                 </a>
               </div>
@@ -173,7 +173,7 @@ const getPasswordChangedEmailHtml = (userName: string) => `
               
               <!-- Botão -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendaclin.lovable.app/login" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                <a href="https://agendacliin.lovable.app/login" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                   Acessar Minha Conta →
                 </a>
               </div>
@@ -252,7 +252,7 @@ const getSubscriptionCancelledEmailHtml = (userName: string) => `
               
               <!-- Botão -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendaclin.lovable.app" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                <a href="https://agendacliin.lovable.app" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                   Reativar Minha Conta →
                 </a>
               </div>
@@ -395,7 +395,7 @@ const getSubscriptionRenewedEmailHtml = (userName: string, planName: string, nex
               
               <!-- Botão -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendaclin.lovable.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                <a href="https://agendacliin.lovable.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                   Acessar Dashboard →
                 </a>
               </div>
