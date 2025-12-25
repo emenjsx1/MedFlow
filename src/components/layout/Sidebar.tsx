@@ -9,6 +9,7 @@ import {
   MessageSquare,
   UserCheck,
   UsersRound,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,12 @@ const navItems = [
     href: '/professionals',
     icon: UserCheck,
     roles: ['admin'],
+  },
+  {
+    label: 'Relatórios',
+    href: '/reports',
+    icon: BarChart3,
+    roles: ['admin', 'staff'],
   },
   {
     label: 'Configurações',

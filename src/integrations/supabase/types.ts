@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_conversations: {
+        Row: {
+          appointment_id: string | null
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          messages_count: number | null
+          outcome: string | null
+          patient_id: string | null
+          patient_phone: string
+          started_at: string
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          messages_count?: number | null
+          outcome?: string | null
+          patient_id?: string | null
+          patient_phone: string
+          started_at?: string
+          tenant_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          messages_count?: number | null
+          outcome?: string | null
+          patient_id?: string | null
+          patient_phone?: string
+          started_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           calendar_event_id: string | null

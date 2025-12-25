@@ -42,6 +42,7 @@ import {
   Edit,
   Trash2,
   AlertTriangle,
+  History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -49,6 +50,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import PatientHistorySheet from '@/components/patients/PatientHistorySheet';
 
 interface Patient {
   id: string;
@@ -75,6 +77,8 @@ export default function Patients() {
   const [newPatientEmail, setNewPatientEmail] = useState('');
   const [newPatientNotes, setNewPatientNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (tenantId) {
@@ -413,6 +417,13 @@ export default function Patients() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedPatient(patient);
+                                setHistoryOpen(true);
+                              }}>
+                                <History className="w-4 h-4 mr-2" />
+                                Ver histórico
+                              </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <MessageSquare className="w-4 h-4 mr-2" />
                                 Enviar mensagem
@@ -439,6 +450,13 @@ export default function Patients() {
             </ScrollArea>
           </CardContent>
         </Card>
+
+        {/* Patient History Sheet */}
+        <PatientHistorySheet
+          patient={selectedPatient}
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+        />
       </div>
     </DashboardLayout>
   );
