@@ -5,11 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// This function should be called by a cron job every 15 minutes
-// It marks appointments as no_show if:
-// 1. The appointment time has passed (scheduled_at + duration_minutes)
-// 2. Status is 'confirmed'
-// 3. Patient hasn't checked in (checked_in_at is null)
+// This function handles:
+// 1. Automatic no-show marking (cron job every 15 minutes)
+// 2. Manual check-in via public link
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,6 +20,81 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+    // Check if this is a check-in request
+    let body: any = {}
+    try {
+      body = await req.json()
+    } catch {
+      // No body, continue with no-show processing
+    }
+
+    // Handle check-in action
+    if (body.action === 'checkin' && body.appointmentId) {
+      console.log('Processing check-in for appointment:', body.appointmentId)
+
+      const { data: appointment, error: fetchError } = await supabase
+        .from('appointments')
+        .select('id, status, checked_in_at, scheduled_at')
+        .eq('id', body.appointmentId)
+        .maybeSingle()
+
+      if (fetchError || !appointment) {
+        console.error('Appointment not found:', fetchError)
+        return new Response(
+          JSON.stringify({ error: 'Consulta não encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Check if already checked in
+      if (appointment.checked_in_at) {
+        return new Response(
+          JSON.stringify({ success: true, message: 'Já realizou check-in' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Verify appointment is today
+      const scheduledDate = new Date(appointment.scheduled_at)
+      const today = new Date()
+      const isToday = 
+        scheduledDate.getDate() === today.getDate() &&
+        scheduledDate.getMonth() === today.getMonth() &&
+        scheduledDate.getFullYear() === today.getFullYear()
+
+      if (!isToday) {
+        return new Response(
+          JSON.stringify({ error: 'Check-in só disponível no dia da consulta' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Perform check-in
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ 
+          checked_in_at: new Date().toISOString(),
+          status: 'confirmed' // Ensure status is confirmed
+        })
+        .eq('id', body.appointmentId)
+
+      if (updateError) {
+        console.error('Error updating appointment:', updateError)
+        return new Response(
+          JSON.stringify({ error: 'Erro ao realizar check-in' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      console.log('Check-in successful for appointment:', body.appointmentId)
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Check-in realizado com sucesso' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Process no-shows (default action)
     const now = new Date()
     console.log('Processing no-shows at:', now.toISOString())
 
