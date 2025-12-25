@@ -191,15 +191,17 @@ Deno.serve(async (req) => {
               apikey: EVOLUTION_API_KEY,
             },
             body: JSON.stringify({
-              message: messageData,
+              message: { key: { id: messageData.key?.id } },
               convertToMp4,
             }),
           })
 
+
           if (!mediaResponse.ok) {
             const errorText = await mediaResponse.text()
             console.error('Failed to get media from Evolution API:', mediaResponse.status, errorText)
-            messageText = '[Recebi teu áudio, mas não consegui processar. Podes mandar em texto?]'
+            messageText = 'Não entendi o áudio, pode escrever?'
+            transcriptionFailed = true
           } else {
             const mediaData = await mediaResponse.json()
 
@@ -208,14 +210,20 @@ Deno.serve(async (req) => {
 
             if (!audioBase64) {
               console.error('Evolution API returned no base64 data:', JSON.stringify(mediaData))
-              messageText = '[Recebi teu áudio, mas não consegui ler. Podes mandar em texto?]'
+              messageText = 'Não entendi o áudio, pode escrever?'
+              transcriptionFailed = true
             } else {
-              console.log('Audio decrypted successfully, base64 length:', audioBase64.length)
+              console.log('Audio decrypted successfully', {
+                messageId: messageData.key?.id,
+                base64Length: audioBase64.length,
+                base64Head: audioBase64.slice(0, 24),
+              })
 
               const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
               if (!LOVABLE_API_KEY) {
                 console.error('LOVABLE_API_KEY not configured')
-                messageText = '[Transcrição não configurada]'
+                messageText = 'Não entendi o áudio, pode escrever?'
+                transcriptionFailed = true
               } else {
                 // Ajuste de limite: evita respostas enormes quando a decodificação falha.
                 const maxTokens = seconds > 0 ? Math.min(1200, Math.max(200, Math.round(seconds * 12))) : 600
