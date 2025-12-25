@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Repeat,
   UserCheck,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -123,6 +124,7 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
       mark_cancelled: `Consulta de ${patientName} marcada como cancelada`,
       mark_noshow: `${patientName} marcado como não compareceu`,
       check_in: `${patientName} fez check-in`,
+      send_reminder: `Lembrete de check-in enviado para ${patientName}`,
     };
     
     toast.success(actionMessages[action] || 'Ação realizada');
@@ -257,6 +259,16 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                           </>
+                        )}
+                        {/* Send check-in reminder - for pending appointments */}
+                        {appointment.status === 'pending' && appointment.patient_phone && (
+                          <DropdownMenuItem
+                            onClick={() => handleAction(appointment.id, 'send_reminder', appointment.patient_name)}
+                            className="text-primary focus:text-primary"
+                          >
+                            <Bell className="w-4 h-4 mr-2" />
+                            Enviar lembrete check-in
+                          </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                           onClick={() => handleAction(appointment.id, 'resend', appointment.patient_name)}
