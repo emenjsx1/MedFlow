@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
           .maybeSingle()
 
         if (!existingReminder) {
-          message = `⏰ Lembrete: ${appointment.patient_name}!\n\nSua consulta é em 1 hora:\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\nNos vemos em breve!`
+          message = `⏰ Lembrete: ${appointment.patient_name}!\n\nSua consulta está agendada para daqui a 1 hora:\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n⚠️ Sua consulta está *pendente*. Você receberá um link de check-in 10 minutos antes para confirmar sua presença.\n\nNos vemos em breve!`
           shouldSend = true
           reminderType = '1h'
         }
@@ -106,14 +106,14 @@ Deno.serve(async (req) => {
           .select('id')
           .eq('appointment_id', appointment.id)
           .eq('direction', 'outbound')
-          .ilike('body', '%10 minutos%')
+          .ilike('body', '%check-in%')
           .maybeSingle()
 
         if (!existingReminder) {
           // Generate check-in URL
           checkinUrl = `${APP_URL}/checkin/${appointment.id}`
           
-          message = `🔔 Atenção ${appointment.patient_name}!\n\nSua consulta começa em 10 minutos!\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n✅ *Faça seu check-in agora:*\n${checkinUrl}\n\nOu escaneie o QR Code abaixo ao chegar! 📱`
+          message = `🔔 *${appointment.patient_name}, sua consulta começa em 10 minutos!*\n\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n✅ *Para CONFIRMAR sua presença, faça o check-in:*\n👉 ${checkinUrl}\n\n📱 Ou escaneie o QR Code ao chegar!\n\n⚠️ Sem check-in, sua consulta ficará como *não compareceu*.`
           shouldSend = true
           reminderType = '10min'
           sendQRCode = true

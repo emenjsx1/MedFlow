@@ -165,11 +165,18 @@ export default function Dashboard() {
           newStatus = 'no_show';
           break;
         case 'check_in':
-          // Mark patient as checked in
+          // Mark patient as checked in AND change status to confirmed
           await supabase
             .from('appointments')
-            .update({ checked_in_at: new Date().toISOString() })
+            .update({ 
+              checked_in_at: new Date().toISOString(),
+              status: 'confirmed'
+            })
             .eq('id', id);
+          toast({
+            title: 'Check-in realizado',
+            description: `${appointment.patient_name} fez check-in e está confirmado.`,
+          });
           loadAppointments();
           return;
         case 'resend':

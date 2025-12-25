@@ -95,19 +95,20 @@ Deno.serve(async (req) => {
     }
 
     // Process no-shows (default action)
+    // Now includes BOTH pending and confirmed appointments that haven't checked in
     const now = new Date()
     console.log('Processing no-shows at:', now.toISOString())
 
     // Find appointments that:
-    // - Are confirmed
+    // - Are pending OR confirmed (pending = never confirmed via check-in)
     // - Haven't been checked in
     // - Appointment time + duration has passed (with 30 min grace period)
     const gracePeriodMinutes = 30
 
     const { data: appointments, error } = await supabase
       .from('appointments')
-      .select('id, patient_name, scheduled_at, duration_minutes, tenant_id')
-      .eq('status', 'confirmed')
+      .select('id, patient_name, scheduled_at, duration_minutes, tenant_id, status')
+      .in('status', ['pending', 'confirmed'])
       .is('checked_in_at', null)
       .lt('scheduled_at', now.toISOString())
 

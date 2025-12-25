@@ -245,8 +245,8 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        {/* Check-in button - only for confirmed appointments that haven't checked in */}
-                        {appointment.status === 'confirmed' && !appointment.checked_in_at && (
+                        {/* Check-in button - for pending or confirmed appointments that haven't checked in */}
+                        {(appointment.status === 'pending' || appointment.status === 'confirmed') && !appointment.checked_in_at && (
                           <>
                             <DropdownMenuItem
                               onClick={() => handleAction(appointment.id, 'check_in', appointment.patient_name)}
