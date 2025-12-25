@@ -16,6 +16,12 @@ import {
   Loader2,
   RefreshCw,
   ArrowLeft,
+  Zap,
+  QrCode,
+  CalendarCheck,
+  Gift,
+  Heart,
+  Clock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -40,6 +46,40 @@ const statusConfig = {
   read: { label: 'Lido', icon: CheckCheck, className: 'text-primary' },
   failed: { label: 'Falhou', icon: AlertCircle, className: 'text-destructive' },
 };
+
+// Quick message templates
+const quickTemplates = [
+  { 
+    id: 'confirmation',
+    label: 'Confirmação', 
+    icon: CalendarCheck,
+    message: 'Olá {nome}! Confirmando sua consulta para amanhã. Por favor, responda: 1-Confirmar, 2-Cancelar, 3-Reagendar' 
+  },
+  { 
+    id: 'reminder',
+    label: 'Lembrete', 
+    icon: Clock,
+    message: 'Olá {nome}! Lembrando que sua consulta está marcada para hoje. Até breve!' 
+  },
+  { 
+    id: 'checkin',
+    label: 'Check-in QR', 
+    icon: QrCode,
+    message: 'Olá {nome}! Para fazer check-in na sua consulta, acesse o link: {link_checkin}' 
+  },
+  { 
+    id: 'thanks',
+    label: 'Agradecimento', 
+    icon: Heart,
+    message: 'Obrigado por sua visita, {nome}! Esperamos vê-lo novamente. Cuide-se!' 
+  },
+  { 
+    id: 'promo',
+    label: 'Promoção', 
+    icon: Gift,
+    message: 'Olá {nome}! Temos uma promoção especial para você. Entre em contato para saber mais!' 
+  },
+];
 
 export default function Messages() {
   const { tenantId } = useAuth();
@@ -558,7 +598,34 @@ export default function Messages() {
                   </ScrollArea>
                   
                   {/* Message Input */}
-                  <div className="border-t p-4 shrink-0">
+                  <div className="border-t p-4 shrink-0 space-y-3">
+                    {/* Quick Templates */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      <Zap className="w-4 h-4 text-muted-foreground shrink-0" />
+                      {quickTemplates.map((template) => {
+                        const Icon = template.icon;
+                        return (
+                          <Button
+                            key={template.id}
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 gap-1.5 text-xs"
+                            onClick={() => {
+                              // Replace {nome} with patient name
+                              const message = template.message.replace(
+                                '{nome}',
+                                selectedConversation.patientName.split(' ')[0]
+                              );
+                              setNewMessage(message);
+                            }}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            {template.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
                     <div className="flex gap-3 items-end">
                       <Textarea
                         placeholder="Digite sua mensagem..."
@@ -586,7 +653,7 @@ export default function Messages() {
                         )}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground">
                       Enter para enviar • Shift+Enter para nova linha
                     </p>
                   </div>

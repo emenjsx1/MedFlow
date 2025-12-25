@@ -142,6 +142,7 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
+            <TableHead className="font-semibold w-24">ID</TableHead>
             <TableHead className="font-semibold">Paciente</TableHead>
             <TableHead className="font-semibold">Horário</TableHead>
             <TableHead className="font-semibold">Profissional</TableHead>
@@ -153,7 +154,7 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
         <TableBody>
           {appointments.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+              <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                 Nenhuma consulta encontrada para os filtros selecionados.
               </TableCell>
             </TableRow>
@@ -172,6 +173,11 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                     isHighRisk && 'bg-danger/5'
                   )}
                 >
+                  <TableCell>
+                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">
+                      {appointment.id.substring(0, 8)}
+                    </code>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
