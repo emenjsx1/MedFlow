@@ -29,6 +29,7 @@ import {
   Ban,
   RefreshCw,
   Repeat,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -50,6 +51,7 @@ export interface Appointment {
   notes?: string | null;
   tenant_id?: string;
   is_recurring?: boolean;
+  checked_in_at?: string | null;
 }
 
 interface AppointmentTableProps {
@@ -120,6 +122,7 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
       offer_waitlist: `Vaga oferecida para fila de espera`,
       mark_cancelled: `Consulta de ${patientName} marcada como cancelada`,
       mark_noshow: `${patientName} marcado como não compareceu`,
+      check_in: `${patientName} fez check-in`,
     };
     
     toast.success(actionMessages[action] || 'Ação realizada');
@@ -184,6 +187,12 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                           </p>
                         )}
                       </div>
+                      {appointment.checked_in_at && (
+                        <Badge variant="outline" className="bg-success/15 text-success border-success/30">
+                          <UserCheck className="w-3 h-3 mr-1" />
+                          Check-in
+                        </Badge>
+                      )}
                       {risk && (
                         <Badge variant="outline" className={cn('text-xs', risk.className)}>
                           <AlertTriangle className="w-3 h-3 mr-1" />
@@ -230,6 +239,19 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        {/* Check-in button - only for confirmed appointments that haven't checked in */}
+                        {appointment.status === 'confirmed' && !appointment.checked_in_at && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleAction(appointment.id, 'check_in', appointment.patient_name)}
+                              className="text-success focus:text-success"
+                            >
+                              <UserCheck className="w-4 h-4 mr-2" />
+                              Fazer Check-in
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         <DropdownMenuItem
                           onClick={() => handleAction(appointment.id, 'resend', appointment.patient_name)}
                         >

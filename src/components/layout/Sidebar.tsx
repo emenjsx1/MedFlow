@@ -10,6 +10,7 @@ import {
   UserCheck,
   UsersRound,
   BarChart3,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,12 @@ const navItems = [
     href: '/reports',
     icon: BarChart3,
     roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Campanhas',
+    href: '/campaigns',
+    icon: Megaphone,
+    roles: ['admin'],
   },
   {
     label: 'Configurações',

@@ -164,6 +164,14 @@ export default function Dashboard() {
         case 'mark_noshow':
           newStatus = 'no_show';
           break;
+        case 'check_in':
+          // Mark patient as checked in
+          await supabase
+            .from('appointments')
+            .update({ checked_in_at: new Date().toISOString() })
+            .eq('id', id);
+          loadAppointments();
+          return;
         case 'resend':
           // Send confirmation message via WhatsApp
           if (appointment.patient_phone) {
