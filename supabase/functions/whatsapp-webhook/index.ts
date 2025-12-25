@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     // Check for audio message
     const audioMessage = messageData.message?.audioMessage
     let isAudioMessage = false
-    
+    let transcriptionFailed = false // Flag to skip booking-agent when transcription fails
     if (audioMessage) {
       isAudioMessage = true
 
@@ -260,7 +260,8 @@ Deno.serve(async (req) => {
                 if (!transcribeResponse.ok) {
                   const errorText = await transcribeResponse.text()
                   console.error('Transcription API failed:', transcribeResponse.status, errorText)
-                  messageText = '[Recebi teu áudio, mas não consegui transcrever. Podes mandar em texto?]'
+                  messageText = 'Não entendi o áudio, pode escrever?'
+                  transcriptionFailed = true
                 } else {
                   const transcribeResult = await transcribeResponse.json()
                   const transcript = (transcribeResult.choices?.[0]?.message?.content || '').trim()
@@ -276,7 +277,8 @@ Deno.serve(async (req) => {
 
                   if (!transcript || transcript === '[INAUDIVEL]' || transcript.length > maxChars) {
                     console.warn('Transcription looks unreliable; falling back to ask for text.')
-                    messageText = '[Não consegui entender teu áudio. Podes escrever em texto?]'
+                    messageText = 'Não entendi o áudio, pode escrever?'
+                    transcriptionFailed = true
                   } else {
                     messageText = transcript
                     console.log('Audio transcribed successfully:', messageText)
@@ -287,11 +289,13 @@ Deno.serve(async (req) => {
           }
         } else {
           console.log('Evolution API not configured for audio processing')
-          messageText = '[Recebi teu áudio, mas a transcrição não está disponível agora. Podes mandar em texto?]'
+          messageText = 'Recebi teu áudio, mas a transcrição não está disponível agora. Pode escrever?'
+          transcriptionFailed = true
         }
       } catch (transcribeError) {
         console.error('Error processing audio:', transcribeError)
-        messageText = '[Erro ao processar áudio. Podes mandar em texto?]'
+        messageText = 'Erro ao processar áudio. Pode escrever?'
+        transcriptionFailed = true
       }
     }
     
@@ -336,7 +340,7 @@ Deno.serve(async (req) => {
     // Extract tenant_id from whatsapp_session_id stored in database
     const { data: settings, error: settingsError } = await supabase
       .from('tenant_settings')
-      .select('tenant_id')
+      .select('tenant_id, whatsapp_session_id')
       .eq('whatsapp_session_id', instanceName)
       .maybeSingle()
 
@@ -348,6 +352,46 @@ Deno.serve(async (req) => {
     }
 
     const tenantId = settings.tenant_id
+
+    // =====================================================================
+    // Se a transcrição falhou, responder direto sem chamar o agente
+    // =====================================================================
+    if (transcriptionFailed) {
+      console.log('Transcription failed, sending direct reply without calling agent...')
+
+      // Enviar resposta direta via WhatsApp
+      if (EVOLUTION_API_URL && EVOLUTION_API_KEY && settings.whatsapp_session_id) {
+        const formattedPhone = patientPhone.replace(/\D/g, '')
+        const whatsappNumber = formattedPhone.includes('@') ? formattedPhone : `${formattedPhone}@s.whatsapp.net`
+
+        try {
+          const sendResponse = await fetch(`${EVOLUTION_API_URL}/message/sendText/${settings.whatsapp_session_id}`, {
+            method: 'POST',
+            headers: {
+              apikey: EVOLUTION_API_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              number: whatsappNumber,
+              text: messageText,
+            }),
+          })
+
+          if (!sendResponse.ok) {
+            console.error('WhatsApp direct reply failed:', await sendResponse.text())
+          } else {
+            console.log('Direct reply sent successfully (transcription failed)')
+          }
+        } catch (err) {
+          console.error('Error sending direct reply:', err)
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, transcriptionFailed: true, reply: messageText }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Get conversation history
     const { data: patient } = await supabase
