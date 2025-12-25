@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
-      .select('*, tenant_settings:tenant_settings!appointments_tenant_id_fkey(clinic_name, clinic_address, clinic_phone, whatsapp_session_id, whatsapp_connected)')
+      .select('*')
       .in('status', ['pending', 'confirmed'])
       .gte('scheduled_at', now.toISOString())
       .lte('scheduled_at', oneHourFromNow.toISOString())
@@ -40,6 +40,22 @@ Deno.serve(async (req) => {
     if (appointmentsError) {
       console.error('Error fetching appointments:', appointmentsError)
       throw appointmentsError
+    }
+
+    // Fetch tenant settings for each unique tenant
+    const tenantIds = [...new Set(appointments?.map(a => a.tenant_id) || [])]
+    const tenantSettingsMap: Record<string, any> = {}
+    
+    for (const tenantId of tenantIds) {
+      const { data: settings } = await supabase
+        .from('tenant_settings')
+        .select('clinic_name, clinic_address, clinic_phone, whatsapp_session_id, whatsapp_connected')
+        .eq('tenant_id', tenantId)
+        .single()
+      
+      if (settings) {
+        tenantSettingsMap[tenantId] = settings
+      }
     }
 
     console.log(`Found ${appointments?.length || 0} appointments to check`)
@@ -96,7 +112,8 @@ Deno.serve(async (req) => {
           // Generate check-in URL - send 1 hour before so patient can check in when arriving
           checkinUrl = `${APP_URL}/checkin/${appointment.id}`
           
-          message = `⏰ *${appointment.patient_name}, sua consulta é em 1 hora!*\n\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n✅ *Para CONFIRMAR sua presença, faça o check-in ao chegar:*\n👉 ${checkinUrl}\n\n📱 Ou escaneie o QR Code ao chegar na clínica!\n\n⚠️ Sem check-in, sua consulta ficará como *não compareceu*.`
+          const tenantSettings = tenantSettingsMap[tenantId] || {}
+          message = `⏰ *${appointment.patient_name}, sua consulta é em 1 hora!*\n\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${tenantSettings.clinic_address || 'Endereço da clínica'}\n\n✅ *Para CONFIRMAR sua presença, faça o check-in ao chegar:*\n👉 ${checkinUrl}\n\n📱 Ou escaneie o QR Code ao chegar na clínica!\n\n⚠️ Sem check-in, sua consulta ficará como *não compareceu*.`
           shouldSend = true
           reminderType = '1h'
           sendQRCode = true
