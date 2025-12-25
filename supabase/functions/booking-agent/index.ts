@@ -149,22 +149,78 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Salvar mensagem recebida no banco
+    // Garantir que existe paciente (para manter histórico e evitar repetir saudação)
+    let patientId: string | null = null
+    const placeholderName = 'Sem nome'
+
+    const { data: existingPatient } = await supabase
+      .from('patients')
+      .select('id, name')
+      .eq('tenant_id', tenantId)
+      .eq('whatsapp', patientPhone)
+      .maybeSingle()
+
+    if (existingPatient?.id) {
+      patientId = existingPatient.id
+
+      if (patientName && (!existingPatient.name || existingPatient.name === placeholderName)) {
+        await supabase
+          .from('patients')
+          .update({ name: patientName })
+          .eq('id', patientId)
+      }
+    } else {
+      const { data: newPatient, error: patientError } = await supabase
+        .from('patients')
+        .insert({
+          tenant_id: tenantId,
+          name: patientName || placeholderName,
+          whatsapp: patientPhone,
+        })
+        .select('id')
+        .single()
+
+      if (patientError) {
+        console.error('Patient creation error:', patientError)
+      } else {
+        patientId = newPatient?.id ?? null
+      }
+    }
+
+    // Detectar se é a primeira mensagem (para só saudar uma vez)
+    const hasConversationHistory = Array.isArray(conversationHistory) && conversationHistory.length > 0
+
+    const { data: previousMessages } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('patient_id', patientId)
+      .limit(1)
+
+    const hasStoredHistory = (previousMessages?.length ?? 0) > 0
+    const isFirstMessage = !hasConversationHistory && !hasStoredHistory
+
+    // Salvar mensagem recebida no banco (com patient_id para o webhook conseguir montar histórico)
     await supabase.from('messages').insert({
       tenant_id: tenantId,
+      patient_id: patientId,
       body: message,
       direction: 'inbound',
       sent_at: new Date().toISOString(),
     })
 
+    const turnDirective = isFirstMessage
+      ? 'Esta é a PRIMEIRA mensagem desta conversa. Faz uma saudação curta UMA vez e depois responde/age em cima do que a pessoa perguntou. Se não puderes responder por ser assunto pessoal, recusa educadamente e redireciona para temas de projetos/negócios.'
+      : 'Esta conversa JÁ está em andamento. Não te apresentes de novo (não repitas "Sou o assistente do Emen" e não repitas saudação). Responde diretamente ao conteúdo da última mensagem.'
+
     // Preparar mensagens para IA - APENAS o prompt do Emen
     const messages = [
-      { role: 'system', content: EMEN_ASSISTANT_PROMPT },
+      { role: 'system', content: `${EMEN_ASSISTANT_PROMPT}\n\n${turnDirective}` },
       ...conversationHistory,
       { role: 'user', content: message }
     ]
 
-    console.log('Sending to AI with Emen prompt...')
+    console.log('Sending to AI with Emen prompt...', { isFirstMessage, hasConversationHistory, hasStoredHistory })
 
     // Usar Lovable AI Gateway
     if (!LOVABLE_API_KEY) {
@@ -212,6 +268,7 @@ Deno.serve(async (req) => {
     // Salvar resposta no banco
     await supabase.from('messages').insert({
       tenant_id: tenantId,
+      patient_id: patientId,
       body: reply,
       direction: 'outbound',
       sent_at: new Date().toISOString(),
