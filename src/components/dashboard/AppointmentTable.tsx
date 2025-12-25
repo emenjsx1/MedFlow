@@ -14,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -27,20 +28,28 @@ import {
   CheckCircle2,
   Ban,
   RefreshCw,
+  Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import RecurringAppointmentDialog from '@/components/appointments/RecurringAppointmentDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Appointment {
   id: string;
   patient_name: string;
-  patient_phone?: string;
+  patient_phone?: string | null;
+  patient_id?: string | null;
   scheduled_at: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'rescheduled' | 'in_replacement' | 'filled';
   risk_level: 'low' | 'medium' | 'high';
-  professional_id?: string;
-  professional_name?: string;
-  last_contact_at?: string;
+  professional_id?: string | null;
+  professional_name?: string | null;
+  last_contact_at?: string | null;
+  duration_minutes?: number | null;
+  notes?: string | null;
+  tenant_id?: string;
+  is_recurring?: boolean;
 }
 
 interface AppointmentTableProps {
@@ -99,6 +108,10 @@ const riskBadge = {
 };
 
 export default function AppointmentTable({ appointments, onAction }: AppointmentTableProps) {
+  const { tenantId } = useAuth();
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
   const handleAction = (id: string, action: string, patientName: string) => {
     onAction(id, action);
     
@@ -112,7 +125,16 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
     toast.success(actionMessages[action] || 'Ação realizada');
   };
 
+  const handleRecurring = (appointment: Appointment) => {
+    setSelectedAppointment({
+      ...appointment,
+      tenant_id: appointment.tenant_id || tenantId || '',
+    });
+    setRecurringDialogOpen(true);
+  };
+
   return (
+    <>
     <div className="bg-card rounded-xl border border-border/50 shadow-card overflow-hidden">
       <Table>
         <TableHeader>
@@ -215,11 +237,18 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                           Reenviar confirmação
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onClick={() => handleRecurring(appointment)}
+                        >
+                          <Repeat className="w-4 h-4 mr-2" />
+                          Tornar recorrente
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => handleAction(appointment.id, 'offer_waitlist', appointment.patient_name)}
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
                           Oferecer para fila
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleAction(appointment.id, 'mark_cancelled', appointment.patient_name)}
                           className="text-destructive focus:text-destructive"
@@ -244,5 +273,19 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
         </TableBody>
       </Table>
     </div>
+
+    {/* Recurring Appointment Dialog */}
+    {selectedAppointment && (
+      <RecurringAppointmentDialog
+        open={recurringDialogOpen}
+        onOpenChange={setRecurringDialogOpen}
+        appointment={selectedAppointment as any}
+        onSuccess={() => {
+          setRecurringDialogOpen(false);
+          toast.success('Agendamentos recorrentes criados!');
+        }}
+      />
+    )}
+    </>
   );
 }

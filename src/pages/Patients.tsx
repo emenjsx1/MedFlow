@@ -43,6 +43,7 @@ import {
   Trash2,
   AlertTriangle,
   History,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -51,6 +52,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import PatientHistorySheet from '@/components/patients/PatientHistorySheet';
+import { exportToCSV, patientExportColumns } from '@/lib/export';
 
 interface Patient {
   id: string;
@@ -213,6 +215,17 @@ export default function Patients() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                exportToCSV(filteredPatients, patientExportColumns, `pacientes_${format(new Date(), 'yyyy-MM-dd')}`);
+                toast.success('Pacientes exportados!');
+              }}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exportar</span>
+            </Button>
             <Button
               variant="outline"
               className="gap-2"

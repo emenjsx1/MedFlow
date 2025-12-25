@@ -81,13 +81,17 @@ export type Database = {
           created_at: string | null
           duration_minutes: number | null
           id: string
+          is_recurring: boolean | null
           last_contact_at: string | null
           notes: string | null
+          parent_appointment_id: string | null
           patient_id: string | null
           patient_name: string
           patient_phone: string | null
           professional_id: string | null
           professional_name: string | null
+          recurrence_end_date: string | null
+          recurrence_rule: string | null
           risk_level: Database["public"]["Enums"]["risk_level"] | null
           scheduled_at: string
           status: Database["public"]["Enums"]["appointment_status"] | null
@@ -99,13 +103,17 @@ export type Database = {
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
+          is_recurring?: boolean | null
           last_contact_at?: string | null
           notes?: string | null
+          parent_appointment_id?: string | null
           patient_id?: string | null
           patient_name: string
           patient_phone?: string | null
           professional_id?: string | null
           professional_name?: string | null
+          recurrence_end_date?: string | null
+          recurrence_rule?: string | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
@@ -117,13 +125,17 @@ export type Database = {
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
+          is_recurring?: boolean | null
           last_contact_at?: string | null
           notes?: string | null
+          parent_appointment_id?: string | null
           patient_id?: string | null
           patient_name?: string
           patient_phone?: string | null
           professional_id?: string | null
           professional_name?: string | null
+          recurrence_end_date?: string | null
+          recurrence_rule?: string | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["appointment_status"] | null
@@ -131,6 +143,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_parent_appointment_id_fkey"
+            columns: ["parent_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_patient_id_fkey"
             columns: ["patient_id"]
