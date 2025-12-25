@@ -260,8 +260,10 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                             <DropdownMenuSeparator />
                           </>
                         )}
-                        {/* Send check-in reminder - for pending appointments */}
-                        {appointment.status === 'pending' && appointment.patient_phone && (
+                        {/* Send check-in reminder - for pending or confirmed appointments without check-in */}
+                        {(appointment.status === 'pending' || appointment.status === 'confirmed') && 
+                         appointment.patient_phone && 
+                         !appointment.checked_in_at && (
                           <DropdownMenuItem
                             onClick={() => handleAction(appointment.id, 'send_reminder', appointment.patient_name)}
                             className="text-primary focus:text-primary"
