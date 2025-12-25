@@ -248,6 +248,24 @@ $$;
 SET default_table_access_method = heap;
 
 --
+-- Name: agent_conversations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_conversations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    patient_id uuid,
+    patient_phone text NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone,
+    messages_count integer DEFAULT 0,
+    outcome text,
+    appointment_id uuid,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: appointments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -339,6 +357,22 @@ CREATE TABLE public.profiles (
 
 
 --
+-- Name: tenant_secrets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant_secrets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    openai_api_key text,
+    google_access_token text,
+    google_refresh_token text,
+    google_token_expires_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: tenant_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -367,15 +401,14 @@ CREATE TABLE public.tenant_settings (
     business_hours_end time without time zone DEFAULT '18:00:00'::time without time zone,
     working_days text[] DEFAULT ARRAY['monday'::text, 'tuesday'::text, 'wednesday'::text, 'thursday'::text, 'friday'::text],
     appointment_duration_minutes integer DEFAULT 30,
-    openai_api_key text,
     use_custom_openai boolean DEFAULT false,
     agent_greeting_message text DEFAULT 'Olá! Bem-vindo à nossa clínica. Como posso ajudá-lo hoje?'::text,
     agent_booking_confirmation text DEFAULT 'Perfeito! Sua consulta foi agendada para {data} às {hora}. Até lá!'::text,
-    google_access_token text,
-    google_refresh_token text,
-    google_token_expires_at timestamp with time zone,
     agent_business_context text,
-    agent_faqs jsonb DEFAULT '[]'::jsonb
+    agent_faqs jsonb DEFAULT '[]'::jsonb,
+    timezone text DEFAULT 'America/Sao_Paulo'::text,
+    notify_owner_on_booking boolean DEFAULT true,
+    notification_emails text[] DEFAULT '{}'::text[]
 );
 
 
@@ -421,6 +454,14 @@ CREATE TABLE public.waitlist (
 
 
 --
+-- Name: agent_conversations agent_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT agent_conversations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -458,6 +499,22 @@ ALTER TABLE ONLY public.professionals
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_secrets tenant_secrets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_secrets
+    ADD CONSTRAINT tenant_secrets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_secrets tenant_secrets_tenant_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_secrets
+    ADD CONSTRAINT tenant_secrets_tenant_id_key UNIQUE (tenant_id);
 
 
 --
@@ -506,6 +563,20 @@ ALTER TABLE ONLY public.user_roles
 
 ALTER TABLE ONLY public.waitlist
     ADD CONSTRAINT waitlist_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_agent_conversations_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_agent_conversations_started_at ON public.agent_conversations USING btree (started_at);
+
+
+--
+-- Name: idx_agent_conversations_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_agent_conversations_tenant_id ON public.agent_conversations USING btree (tenant_id);
 
 
 --
@@ -565,6 +636,13 @@ CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR E
 
 
 --
+-- Name: tenant_secrets update_tenant_secrets_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_tenant_secrets_updated_at BEFORE UPDATE ON public.tenant_secrets FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: tenant_settings update_tenant_settings_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -576,6 +654,30 @@ CREATE TRIGGER update_tenant_settings_updated_at BEFORE UPDATE ON public.tenant_
 --
 
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON public.tenants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: agent_conversations agent_conversations_appointment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT agent_conversations_appointment_id_fkey FOREIGN KEY (appointment_id) REFERENCES public.appointments(id) ON DELETE SET NULL;
+
+
+--
+-- Name: agent_conversations agent_conversations_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT agent_conversations_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id) ON DELETE SET NULL;
+
+
+--
+-- Name: agent_conversations agent_conversations_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_conversations
+    ADD CONSTRAINT agent_conversations_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
 
 
 --
@@ -659,6 +761,14 @@ ALTER TABLE ONLY public.profiles
 
 
 --
+-- Name: tenant_secrets tenant_secrets_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_secrets
+    ADD CONSTRAINT tenant_secrets_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
 -- Name: tenant_settings tenant_settings_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -726,6 +836,27 @@ CREATE POLICY "Admins can update tenant settings" ON public.tenant_settings FOR 
 
 
 --
+-- Name: tenant_secrets Only admins can insert tenant secrets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Only admins can insert tenant secrets" ON public.tenant_secrets FOR INSERT WITH CHECK (((tenant_id = public.get_user_tenant_id(auth.uid())) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: tenant_secrets Only admins can update tenant secrets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Only admins can update tenant secrets" ON public.tenant_secrets FOR UPDATE USING (((tenant_id = public.get_user_tenant_id(auth.uid())) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: tenant_secrets Only admins can view tenant secrets; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Only admins can view tenant secrets" ON public.tenant_secrets FOR SELECT USING (((tenant_id = public.get_user_tenant_id(auth.uid())) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
 -- Name: appointments Users can delete appointments in their tenant; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -737,6 +868,13 @@ CREATE POLICY "Users can delete appointments in their tenant" ON public.appointm
 --
 
 CREATE POLICY "Users can delete patients in their tenant" ON public.patients FOR DELETE USING ((tenant_id = public.get_user_tenant_id(auth.uid())));
+
+
+--
+-- Name: agent_conversations Users can insert agent conversations in their tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can insert agent conversations in their tenant" ON public.agent_conversations FOR INSERT WITH CHECK ((tenant_id = public.get_user_tenant_id(auth.uid())));
 
 
 --
@@ -768,6 +906,13 @@ CREATE POLICY "Users can manage waitlist in their tenant" ON public.waitlist USI
 
 
 --
+-- Name: agent_conversations Users can update agent conversations in their tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update agent conversations in their tenant" ON public.agent_conversations FOR UPDATE USING ((tenant_id = public.get_user_tenant_id(auth.uid())));
+
+
+--
 -- Name: appointments Users can update appointments in their tenant; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -786,6 +931,13 @@ CREATE POLICY "Users can update patients in their tenant" ON public.patients FOR
 --
 
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING ((auth.uid() = id));
+
+
+--
+-- Name: agent_conversations Users can view agent conversations from their tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view agent conversations from their tenant" ON public.agent_conversations FOR SELECT USING ((tenant_id = public.get_user_tenant_id(auth.uid())));
 
 
 --
@@ -852,6 +1004,12 @@ CREATE POLICY "Users can view waitlist from their tenant" ON public.waitlist FOR
 
 
 --
+-- Name: agent_conversations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_conversations ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: appointments; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -880,6 +1038,12 @@ ALTER TABLE public.professionals ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tenant_secrets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tenant_secrets ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: tenant_settings; Type: ROW SECURITY; Schema: public; Owner: -
