@@ -166,91 +166,96 @@ Deno.serve(async (req) => {
     
     if (audioMessage) {
       isAudioMessage = true
-      console.log('Audio message detected:', JSON.stringify(audioMessage, null, 2))
+      console.log('Audio message detected, processing via Evolution API...')
       
       try {
-        // Get audio URL from Evolution API
-        // Evolution API provides base64 or URL for media
-        const mediaUrl = audioMessage.url || audioMessage.directPath
         const mimetype = audioMessage.mimetype || 'audio/ogg'
         
-        if (mediaUrl && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
-          // If it's a direct path, construct the full URL
-          let fullAudioUrl = mediaUrl
-          if (!mediaUrl.startsWith('http')) {
-            // Use Evolution API to get the media
-            const mediaResponse = await fetch(`${EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instance}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': EVOLUTION_API_KEY,
-              },
-              body: JSON.stringify({
-                message: messageData,
-                convertToMp4: false
-              }),
-            })
+        if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+          // SEMPRE usar Evolution API para desencriptar o áudio do WhatsApp
+          // Os arquivos do WhatsApp vêm encriptados e precisam ser desencriptados
+          console.log('Requesting decrypted audio from Evolution API...')
+          
+          const mediaResponse = await fetch(`${EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/${instance}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': EVOLUTION_API_KEY,
+            },
+            body: JSON.stringify({
+              message: messageData,
+              convertToMp4: false
+            }),
+          })
+          
+          if (mediaResponse.ok) {
+            const mediaData = await mediaResponse.json()
             
-            if (mediaResponse.ok) {
-              const mediaData = await mediaResponse.json()
-              if (mediaData.base64) {
-                // Decode base64 and transcribe directly
-                const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
+            if (mediaData.base64) {
+              console.log('Audio decrypted successfully, base64 length:', mediaData.base64.length)
+              
+              const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
+              
+              if (LOVABLE_API_KEY) {
+                console.log('Sending audio to Lovable AI for transcription...')
                 
-                if (LOVABLE_API_KEY) {
-                  const transcribeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      model: 'google/gemini-2.5-flash',
-                      messages: [
-                        {
-                          role: 'system',
-                          content: 'Você é um transcritor de áudio especializado em português brasileiro (pt-BR). O áudio que você vai transcrever está em português do Brasil. Transcreva EXATAMENTE o que é dito, palavra por palavra, sem interpretar, traduzir ou adicionar comentários. Retorne APENAS o texto transcrito.'
-                        },
-                        {
-                          role: 'user',
-                          content: [
-                            {
-                              type: 'text',
-                              text: 'Transcreva este áudio para texto:'
-                            },
-                            {
-                              type: 'input_audio',
-                              input_audio: {
-                                data: mediaData.base64,
-                                format: mimetype.includes('ogg') ? 'ogg' : 'mp3'
-                              }
+                const transcribeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    model: 'google/gemini-2.5-flash',
+                    messages: [
+                      {
+                        role: 'system',
+                        content: 'Você é um transcritor de áudio. O áudio está em português (pode ser português de Moçambique, Brasil ou Portugal). Transcreva EXATAMENTE o que a pessoa disse, palavra por palavra. Não adicione interpretações, comentários ou traduções. Retorne APENAS o texto transcrito.'
+                      },
+                      {
+                        role: 'user',
+                        content: [
+                          {
+                            type: 'text',
+                            text: 'Transcreva este áudio para texto:'
+                          },
+                          {
+                            type: 'input_audio',
+                            input_audio: {
+                              data: mediaData.base64,
+                              format: mimetype.includes('ogg') ? 'ogg' : 'mp3'
                             }
-                          ]
-                        }
-                      ],
-                    }),
-                  })
+                          }
+                        ]
+                      }
+                    ],
+                  }),
+                })
 
-                  if (transcribeResponse.ok) {
-                    const transcribeResult = await transcribeResponse.json()
-                    messageText = transcribeResult.choices?.[0]?.message?.content?.trim() || ''
-                    console.log('Audio transcribed successfully:', messageText)
-                  } else {
-                    console.error('Transcription failed:', await transcribeResponse.text())
-                    messageText = '[Mensagem de áudio não pôde ser transcrita]'
-                  }
+                if (transcribeResponse.ok) {
+                  const transcribeResult = await transcribeResponse.json()
+                  messageText = transcribeResult.choices?.[0]?.message?.content?.trim() || ''
+                  console.log('Audio transcribed successfully:', messageText)
+                } else {
+                  const errorText = await transcribeResponse.text()
+                  console.error('Transcription API failed:', transcribeResponse.status, errorText)
+                  messageText = '[Mensagem de áudio não pôde ser transcrita]'
                 }
+              } else {
+                console.error('LOVABLE_API_KEY not configured')
+                messageText = '[Transcrição não configurada]'
               }
             } else {
-              console.error('Failed to get media from Evolution API:', await mediaResponse.text())
-              messageText = '[Mensagem de áudio recebida]'
+              console.error('Evolution API returned no base64 data:', JSON.stringify(mediaData))
+              messageText = '[Áudio não pôde ser processado]'
             }
           } else {
-            // Direct URL - download and transcribe
-            messageText = await transcribeAudio(fullAudioUrl, audioMessage.mediaKey, mimetype)
+            const errorText = await mediaResponse.text()
+            console.error('Failed to get media from Evolution API:', mediaResponse.status, errorText)
+            messageText = '[Mensagem de áudio recebida - erro ao processar]'
           }
         } else {
-          console.log('No audio URL or Evolution API not configured')
+          console.log('Evolution API not configured for audio processing')
           messageText = '[Mensagem de áudio recebida - transcrição não disponível]'
         }
       } catch (transcribeError) {
