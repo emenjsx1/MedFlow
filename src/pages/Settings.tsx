@@ -40,11 +40,14 @@ import {
   Lock,
   Globe,
   Mail,
+  Database,
+  Download,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import BackupDialog from '@/components/backup/BackupDialog';
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -107,6 +110,9 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // Backup dialog state
+  const [backupDialogOpen, setBackupDialogOpen] = useState(false);
 
   // Handle OAuth callback from URL params
   useEffect(() => {
@@ -1437,6 +1443,32 @@ Exemplo:
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Backup Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  Backup dos Dados
+                </CardTitle>
+                <CardDescription>
+                  Faça download de todos os dados da sua clínica
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">
+                      Exporte pacientes, agendamentos, profissionais e configurações em formato JSON ou CSV.
+                    </p>
+                  </div>
+                  <Button onClick={() => setBackupDialogOpen(true)} className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Fazer Backup
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -1492,6 +1524,9 @@ Exemplo:
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Backup Dialog */}
+        <BackupDialog open={backupDialogOpen} onOpenChange={setBackupDialogOpen} />
       </div>
     </DashboardLayout>
   );
