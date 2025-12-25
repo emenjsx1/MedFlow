@@ -38,19 +38,19 @@ const Checkin = () => {
       }
 
       try {
-        // Fetch appointment details (public access - no auth required)
-        const { data: appointmentData, error: fetchError } = await supabase
-          .from("appointments")
-          .select("*, tenant_settings:tenant_id(clinic_name, clinic_address, clinic_phone)")
-          .eq("id", appointmentId)
-          .maybeSingle();
+        // Fetch appointment details via public edge function
+        const { data, error: fetchError } = await supabase.functions.invoke('get-appointment-checkin', {
+          body: { appointmentId }
+        });
 
-        if (fetchError || !appointmentData) {
-          console.error("Error fetching appointment:", fetchError);
+        if (fetchError || !data?.success || !data?.appointment) {
+          console.error("Error fetching appointment:", fetchError || data?.error);
           setStatus("error");
           setErrorMessage("Consulta não encontrada.");
           return;
         }
+
+        const appointmentData = data.appointment;
 
         setAppointment(appointmentData);
 

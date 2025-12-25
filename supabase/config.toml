@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.process-noshow]
 verify_jwt = false
+
+[functions.get-appointment-checkin]
+verify_jwt = false
