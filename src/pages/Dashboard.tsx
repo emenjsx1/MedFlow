@@ -5,6 +5,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatsCard from '@/components/dashboard/StatsCard';
 import AppointmentTable, { Appointment } from '@/components/dashboard/AppointmentTable';
 import DailyScheduleCalendar from '@/components/dashboard/DailyScheduleCalendar';
+import OnboardingModal from '@/components/onboarding/OnboardingModal';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
+  const { showOnboarding, setShowOnboarding, completeOnboarding } = useOnboarding();
   const { tenantId } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -277,6 +280,13 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      {/* Onboarding Modal */}
+      <OnboardingModal 
+        open={showOnboarding} 
+        onOpenChange={setShowOnboarding}
+        onComplete={completeOnboarding}
+      />
+      
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
