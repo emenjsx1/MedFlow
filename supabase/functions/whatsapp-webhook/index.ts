@@ -40,7 +40,7 @@ async function transcribeAudio(audioUrl: string, mediaKey?: string, mimetype?: s
         messages: [
           {
             role: 'system',
-            content: 'Você é um transcritor de áudio. Transcreva exatamente o que é dito no áudio, sem adicionar interpretações ou comentários. Apenas retorne o texto transcrito.'
+            content: 'Você é um transcritor de áudio especializado em português brasileiro (pt-BR). Transcreva exatamente o que é dito no áudio em português, sem adicionar interpretações ou comentários. O áudio está em português do Brasil. Apenas retorne o texto transcrito, nada mais.'
           },
           {
             role: 'user',
@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
                       messages: [
                         {
                           role: 'system',
-                          content: 'Você é um transcritor de áudio. Transcreva exatamente o que é dito no áudio em português, sem adicionar interpretações ou comentários. Apenas retorne o texto transcrito.'
+                          content: 'Você é um transcritor de áudio especializado em português brasileiro (pt-BR). O áudio que você vai transcrever está em português do Brasil. Transcreva EXATAMENTE o que é dito, palavra por palavra, sem interpretar, traduzir ou adicionar comentários. Retorne APENAS o texto transcrito.'
                         },
                         {
                           role: 'user',

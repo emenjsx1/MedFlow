@@ -77,7 +77,9 @@ export type Database = {
       }
       appointments: {
         Row: {
+          auto_noshow_at: string | null
           calendar_event_id: string | null
+          checked_in_at: string | null
           created_at: string | null
           duration_minutes: number | null
           id: string
@@ -99,7 +101,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_noshow_at?: string | null
           calendar_event_id?: string | null
+          checked_in_at?: string | null
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
@@ -121,7 +125,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_noshow_at?: string | null
           calendar_event_id?: string | null
+          checked_in_at?: string | null
           created_at?: string | null
           duration_minutes?: number | null
           id?: string
@@ -166,6 +172,110 @@ export type Database = {
           },
           {
             foreignKeyName: "appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          patient_id: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          patient_id: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          patient_id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          failed_count: number | null
+          id: string
+          image_url: string | null
+          message: string | null
+          name: string
+          scheduled_at: string | null
+          sent_at: string | null
+          sent_count: number | null
+          status: string
+          tenant_id: string
+          total_recipients: number | null
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          failed_count?: number | null
+          id?: string
+          image_url?: string | null
+          message?: string | null
+          name: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          tenant_id: string
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          failed_count?: number | null
+          id?: string
+          image_url?: string | null
+          message?: string | null
+          name?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          tenant_id?: string
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
