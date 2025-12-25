@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar-auth`
 
       console.log('Processing OAuth callback for state:', state)
+      console.log('OAuth callback redirect_uri expected:', redirectUri)
 
       // State format: tenantId|returnUrl (returnUrl is the full frontend URL)
       const pipeIndex = state.indexOf('|')
@@ -188,6 +189,8 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set('state', state)
 
       console.log('Generated auth URL for tenant:', profile.tenant_id)
+      console.log('OAuth redirect_uri used:', redirectUri)
+      console.log('OAuth authUrl:', authUrl.toString())
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),
