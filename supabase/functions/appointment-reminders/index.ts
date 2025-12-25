@@ -81,26 +81,9 @@ Deno.serve(async (req) => {
       let sendQRCode = false
       let checkinUrl = ''
 
-      // 1 hour reminder (55-65 minutes before)
+      // 1 hour reminder WITH CHECK-IN LINK (55-65 minutes before)
       if (minutesUntil >= 55 && minutesUntil <= 65) {
         // Check if we already sent 1h reminder
-        const { data: existingReminder } = await supabase
-          .from('messages')
-          .select('id')
-          .eq('appointment_id', appointment.id)
-          .eq('direction', 'outbound')
-          .ilike('body', '%1 hora%')
-          .maybeSingle()
-
-        if (!existingReminder) {
-          message = `⏰ Lembrete: ${appointment.patient_name}!\n\nSua consulta está agendada para daqui a 1 hora:\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n⚠️ Sua consulta está *pendente*. Você receberá um link de check-in 10 minutos antes para confirmar sua presença.\n\nNos vemos em breve!`
-          shouldSend = true
-          reminderType = '1h'
-        }
-      }
-      // 10 minute reminder with CHECK-IN LINK + QR CODE (8-12 minutes before)
-      else if (minutesUntil >= 8 && minutesUntil <= 12) {
-        // Check if we already sent 10min reminder
         const { data: existingReminder } = await supabase
           .from('messages')
           .select('id')
@@ -110,13 +93,31 @@ Deno.serve(async (req) => {
           .maybeSingle()
 
         if (!existingReminder) {
-          // Generate check-in URL
+          // Generate check-in URL - send 1 hour before so patient can check in when arriving
           checkinUrl = `${APP_URL}/checkin/${appointment.id}`
           
-          message = `🔔 *${appointment.patient_name}, sua consulta começa em 10 minutos!*\n\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n✅ *Para CONFIRMAR sua presença, faça o check-in:*\n👉 ${checkinUrl}\n\n📱 Ou escaneie o QR Code ao chegar!\n\n⚠️ Sem check-in, sua consulta ficará como *não compareceu*.`
+          message = `⏰ *${appointment.patient_name}, sua consulta é em 1 hora!*\n\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n✅ *Para CONFIRMAR sua presença, faça o check-in ao chegar:*\n👉 ${checkinUrl}\n\n📱 Ou escaneie o QR Code ao chegar na clínica!\n\n⚠️ Sem check-in, sua consulta ficará como *não compareceu*.`
+          shouldSend = true
+          reminderType = '1h'
+          sendQRCode = true
+        }
+      }
+      // 10 minute reminder (simple reminder, QR code already sent at 1h)
+      else if (minutesUntil >= 8 && minutesUntil <= 12) {
+        // Check if we already sent 10min reminder
+        const { data: existingReminder } = await supabase
+          .from('messages')
+          .select('id')
+          .eq('appointment_id', appointment.id)
+          .eq('direction', 'outbound')
+          .ilike('body', '%10 minutos%')
+          .maybeSingle()
+
+        if (!existingReminder) {
+          checkinUrl = `${APP_URL}/checkin/${appointment.id}`
+          message = `🔔 *Último lembrete, ${appointment.patient_name}!*\n\nSua consulta começa em 10 minutos!\n⏰ ${timeStr}\n\n👉 Faça check-in agora: ${checkinUrl}`
           shouldSend = true
           reminderType = '10min'
-          sendQRCode = true
         }
       }
 

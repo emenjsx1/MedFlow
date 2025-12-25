@@ -459,6 +459,22 @@ Deno.serve(async (req) => {
 
     const todayAppointmentsCount = todayAppointments?.length || 0
 
+    // Fetch THIS PATIENT's upcoming appointments (for cancel/reschedule)
+    const { data: patientAppointments } = await supabase
+      .from('appointments')
+      .select('id, scheduled_at, patient_name, professional_name, status')
+      .eq('tenant_id', tenantId)
+      .eq('patient_phone', patientPhone)
+      .in('status', ['pending', 'confirmed'])
+      .gte('scheduled_at', today.toISOString())
+      .order('scheduled_at')
+      .limit(5)
+
+    const patientAppointmentsList = (patientAppointments || []).map(a => {
+      const d = new Date(a.scheduled_at)
+      return `- ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${a.professional_name ? ` com ${a.professional_name}` : ''} (ID: ${a.id.substring(0, 8)})`
+    }).join('\n')
+
     // Get available slots from appointments AND Google Calendar
     const nextWeek = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
 
@@ -722,17 +738,24 @@ ${professionalsDetailedInfo}${todaySummary}${waitlistInfo}${businessContextSecti
 ${slotsForPrompt}
 ${availableSlots.length > 25 ? `\n... e mais ${availableSlots.length - 25} horários disponíveis.` : ''}
 
+📋 CONSULTAS AGENDADAS DESTE PACIENTE:
+${patientAppointmentsList || 'Nenhuma consulta agendada'}
+
 📌 SUAS CAPACIDADES (você pode fazer TUDO isso):
 1. ✅ Responder sobre QUALQUER profissional: horário, dias de trabalho, especialidade, se trabalha hoje
 2. ✅ Verificar disponibilidade no Google Calendar em tempo real
 3. ✅ Informar quantas pessoas estão na lista de espera
 4. ✅ Adicionar paciente à lista de espera
 5. ✅ Agendar consultas com qualquer profissional disponível
-6. ✅ Informar sobre consultas de hoje e próximos dias
-7. ✅ Responder perguntas sobre serviços, preços, localização
+6. ✅ CANCELAR consultas existentes do paciente
+7. ✅ REMARCAR consultas para outro dia/horário
+8. ✅ Informar sobre consultas de hoje e próximos dias
+9. ✅ Responder perguntas sobre serviços, preços, localização
 
 📋 COMANDOS ESPECIAIS (use quando apropriado):
 - Para AGENDAR: [AGENDAR: ${currentYear}-MM-DD HH:MM | NOME: Nome Paciente${hasProfessionals ? ' | PROFISSIONAL: Nome Profissional' : ''}]
+- Para CANCELAR: [CANCELAR: ID_DA_CONSULTA]
+- Para REMARCAR: [REMARCAR: ID_ANTIGO | NOVA_DATA: ${currentYear}-MM-DD HH:MM]
 - Para LISTA DE ESPERA: [LISTA_ESPERA: NOME: Nome Paciente | DATA_PREFERIDA: ${currentYear}-MM-DD | HORARIO: HH:MM]
 
 📝 INSTRUÇÕES:
@@ -742,6 +765,9 @@ ${availableSlots.length > 25 ? `\n... e mais ${availableSlots.length - 25} horá
 4. Se não houver vagas, ofereça adicionar à lista de espera
 5. Se não souber o nome do paciente para agendamento, pergunte primeiro
 6. Use as informações em tempo real - você tem acesso a tudo!
+7. Se o paciente pedir para CANCELAR ou REMARCAR, use os comandos apropriados
+8. Ao cancelar, pergunte se deseja remarcar para outro dia
+9. Ao remarcar, cancele a antiga e crie a nova automaticamente
 
 ${customFaqs ? `❓ PERGUNTAS FREQUENTES CONFIGURADAS:\n${customFaqs}\n` : ''}
 
@@ -993,7 +1019,7 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
         console.log('Google Calendar not connected or missing credentials')
       }
 
-      // Create appointment
+      // Create appointment with status PENDING (will become confirmed after check-in)
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert({
@@ -1002,7 +1028,7 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
           patient_name: name,
           patient_phone: patientPhone,
           scheduled_at: scheduledAt,
-          status: 'confirmed',
+          status: 'pending', // Start as pending, confirmed after check-in
           duration_minutes: durationMinutes,
           calendar_event_id: calendarEventId,
           professional_id: selectedProfessional?.id || null,
@@ -1036,6 +1062,117 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
         )
       } else {
         console.error('Appointment creation error:', appointmentError)
+      }
+    }
+
+    // Check for CANCEL command
+    // Format: [CANCELAR: appointment_id_prefix]
+    const cancelMatch = reply.match(/\[CANCELAR:\s*([a-f0-9-]+)\]/)
+    let appointmentCancelled = null
+
+    if (cancelMatch) {
+      const [, idPrefix] = cancelMatch
+      console.log('Cancel request for ID prefix:', idPrefix)
+
+      // Find appointment by ID prefix and patient phone
+      const { data: appointmentToCancel } = await supabase
+        .from('appointments')
+        .select('id, patient_name, scheduled_at, calendar_event_id')
+        .eq('tenant_id', tenantId)
+        .eq('patient_phone', patientPhone)
+        .in('status', ['pending', 'confirmed'])
+        .ilike('id', `${idPrefix}%`)
+        .maybeSingle()
+
+      if (appointmentToCancel) {
+        // Cancel the appointment
+        const { error: cancelError } = await supabase
+          .from('appointments')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('id', appointmentToCancel.id)
+
+        if (!cancelError) {
+          appointmentCancelled = appointmentToCancel
+          console.log('Appointment cancelled:', appointmentToCancel.id)
+
+          // Update conversation outcome
+          if (conversationId) {
+            await supabase
+              .from('agent_conversations')
+              .update({ outcome: 'cancelled', ended_at: new Date().toISOString() })
+              .eq('id', conversationId)
+          }
+        } else {
+          console.error('Cancel error:', cancelError)
+        }
+      } else {
+        console.log('No appointment found for cancel with prefix:', idPrefix)
+      }
+    }
+
+    // Check for RESCHEDULE command
+    // Format: [REMARCAR: old_id | NOVA_DATA: 2025-01-20 10:00]
+    const rescheduleMatch = reply.match(/\[REMARCAR:\s*([a-f0-9-]+)\s*\|\s*NOVA_DATA:\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\]/)
+    let appointmentRescheduled = null
+
+    if (rescheduleMatch) {
+      const [, oldIdPrefix, newDate, newTime] = rescheduleMatch
+      console.log('Reschedule request:', { oldIdPrefix, newDate, newTime })
+
+      // Find old appointment by ID prefix and patient phone
+      const { data: oldAppointment } = await supabase
+        .from('appointments')
+        .select('id, patient_name, patient_id, professional_id, professional_name, duration_minutes')
+        .eq('tenant_id', tenantId)
+        .eq('patient_phone', patientPhone)
+        .in('status', ['pending', 'confirmed'])
+        .ilike('id', `${oldIdPrefix}%`)
+        .maybeSingle()
+
+      if (oldAppointment) {
+        // Cancel old appointment
+        await supabase
+          .from('appointments')
+          .update({ status: 'rescheduled', updated_at: new Date().toISOString() })
+          .eq('id', oldAppointment.id)
+
+        // Create new appointment
+        const newScheduledAt = `${newDate}T${newTime}:00`
+        const { data: newAppointment, error: newError } = await supabase
+          .from('appointments')
+          .insert({
+            tenant_id: tenantId,
+            patient_id: oldAppointment.patient_id,
+            patient_name: oldAppointment.patient_name,
+            patient_phone: patientPhone,
+            scheduled_at: newScheduledAt,
+            status: 'pending',
+            duration_minutes: oldAppointment.duration_minutes || 30,
+            professional_id: oldAppointment.professional_id,
+            professional_name: oldAppointment.professional_name,
+          })
+          .select()
+          .single()
+
+        if (!newError && newAppointment) {
+          appointmentRescheduled = { old: oldAppointment, new: newAppointment }
+          console.log('Appointment rescheduled from', oldAppointment.id, 'to', newAppointment.id)
+
+          // Update conversation outcome
+          if (conversationId) {
+            await supabase
+              .from('agent_conversations')
+              .update({ 
+                outcome: 'rescheduled', 
+                appointment_id: newAppointment.id 
+              })
+              .eq('id', conversationId)
+          }
+        } else {
+          console.error('Reschedule new appointment error:', newError)
+        }
+      } else {
+        console.log('No appointment found for reschedule with prefix:', oldIdPrefix)
       }
     }
 
