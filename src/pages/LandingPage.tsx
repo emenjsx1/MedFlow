@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, Users, Calendar, Bot, Shield, Zap, ChevronLeft, ChevronRight, Star, Plus, Minus, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
+import { CurrencySelector } from "@/components/CurrencySelector";
 const allFeatures = ["Agendamentos ilimitados", "WhatsApp integrado", "Lembretes automáticos (1h e 10min antes)", "Suporte 24/7 automatizado via IA", "Fila de espera inteligente", "Relatórios e métricas", "Gestão de pacientes", "Integrações com Google Calendar", "Suporte prioritário via WhatsApp", "Atualizações gratuitas", "Acesso Mobile e Desktop"];
 const plans = [{
   id: "monthly",
@@ -374,6 +376,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<typeof plans[0] | null>(null);
+  const { formatWithSymbol, config, currency } = useCurrency();
+  
   const handleSelectPlan = (plan: typeof plans[0]) => {
     // Redirecionar diretamente para o checkout do plano selecionado
     window.location.href = plan.checkoutUrl;
@@ -390,6 +394,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between h-14 sm:h-16">
             <SimpleLogo size="sm" />
             <div className="flex items-center gap-2 sm:gap-4">
+              <CurrencySelector variant="minimal" />
               <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex text-sm">
                 Planos
               </Button>
@@ -607,10 +612,10 @@ export default function LandingPage() {
                   <div className="py-3 sm:py-4">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <span className="text-sm sm:text-lg text-muted-foreground line-through">
-                        R$ {plan.originalPrice}
+                        {formatWithSymbol(plan.originalPrice)}
                       </span>
                     </div>
-                    <span className="text-3xl sm:text-4xl font-bold text-primary">R$ {plan.price}</span>
+                    <span className="text-3xl sm:text-4xl font-bold text-primary">{formatWithSymbol(plan.price)}</span>
                     <span className="text-sm text-muted-foreground">/{plan.interval}</span>
                   </div>
                   {plan.savings && <Badge variant="secondary" className={`text-xs ${plan.id === 'annual' ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'}`}>
