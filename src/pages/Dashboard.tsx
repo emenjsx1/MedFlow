@@ -212,6 +212,44 @@ export default function Dashboard() {
           }
           return;
           
+        case 'send_reminder':
+          // Send check-in reminder with link
+          if (appointment.patient_phone) {
+            const checkinUrl = `${window.location.origin}/checkin/${id}`;
+            const scheduledDate = new Date(appointment.scheduled_at);
+            const dateStr = format(scheduledDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
+            const timeStr = format(scheduledDate, 'HH:mm', { locale: ptBR });
+            
+            const { error } = await supabase.functions.invoke('send-manual-message', {
+              body: {
+                tenantId,
+                patientPhone: appointment.patient_phone,
+                message: `⏰ *${appointment.patient_name}, sua consulta está chegando!*\n\n📅 ${dateStr}\n⏰ ${timeStr}\n\n✅ *Para CONFIRMAR sua presença, faça o check-in:*\n👉 ${checkinUrl}\n\n⚠️ Sem check-in, sua consulta ficará como *não compareceu*.`,
+              },
+            });
+            
+            if (error) throw error;
+            
+            // Update last_contact_at
+            await supabase
+              .from('appointments')
+              .update({ last_contact_at: new Date().toISOString() })
+              .eq('id', id);
+            
+            toast({
+              title: 'Lembrete enviado',
+              description: `Link de check-in enviado para ${appointment.patient_name}`,
+            });
+            loadAppointments();
+          } else {
+            toast({
+              title: 'Erro',
+              description: 'Paciente não tem telefone cadastrado.',
+              variant: 'destructive',
+            });
+          }
+          return;
+          
         case 'offer_waitlist':
           // Mark as in_replacement and offer to waitlist
           newStatus = 'in_replacement';
