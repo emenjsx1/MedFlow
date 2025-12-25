@@ -995,18 +995,6 @@ Exemplo:
                   </div>
                 </div>
 
-                <Separator />
-
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <h4 className="font-medium text-primary mb-2">Webhook para Evolution API</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Configure este webhook na sua Evolution API para receber mensagens:
-                  </p>
-                  <code className="block p-2 bg-muted rounded text-xs break-all">
-                    {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`}
-                  </code>
-                </div>
-
                 <Button onClick={handleSaveClinicSettings} disabled={savingClinic}>
                   {savingClinic ? (
                     <>

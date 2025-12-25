@@ -380,6 +380,48 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Track agent conversation - find or create active conversation
+    let conversationId: string | null = null
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    
+    // Look for an active conversation (started in last 30 minutes without outcome)
+    const { data: existingConversation } = await supabase
+      .from('agent_conversations')
+      .select('id, messages_count')
+      .eq('tenant_id', tenantId)
+      .eq('patient_phone', patientPhone)
+      .is('outcome', null)
+      .gte('started_at', thirtyMinutesAgo)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingConversation) {
+      conversationId = existingConversation.id
+      // Increment messages count
+      await supabase
+        .from('agent_conversations')
+        .update({ messages_count: (existingConversation.messages_count || 0) + 1 })
+        .eq('id', conversationId)
+    } else {
+      // Create new conversation
+      const { data: newConversation } = await supabase
+        .from('agent_conversations')
+        .insert({
+          tenant_id: tenantId,
+          patient_phone: patientPhone,
+          patient_id: patientId,
+          messages_count: 1,
+        })
+        .select('id')
+        .single()
+      
+      if (newConversation) {
+        conversationId = newConversation.id
+        console.log('New agent conversation started:', conversationId)
+      }
+    }
+
     // Fetch professionals for this tenant
     const { data: professionals } = await supabase
       .from('professionals')
@@ -1117,7 +1159,29 @@ Responda de forma natural, amigável e COMPLETA em português brasileiro. Você 
       appointment_id: appointmentCreated?.id,
     })
 
-    // Send reply via WhatsApp (Evolution API)
+    // Update conversation outcome if we have a result
+    if (conversationId) {
+      let outcome: string | null = null
+      
+      if (appointmentCreated) {
+        outcome = 'booking_success'
+      } else if (waitlistAdded) {
+        outcome = 'waitlist_added'
+      }
+      // For info_only and abandoned, we track them later or via a cleanup job
+      
+      if (outcome) {
+        await supabase
+          .from('agent_conversations')
+          .update({ 
+            outcome,
+            appointment_id: appointmentCreated?.id || null,
+            ended_at: new Date().toISOString()
+          })
+          .eq('id', conversationId)
+        console.log('Conversation outcome updated:', outcome)
+      }
+    }
     if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
       const instanceName = `clinic_${tenantId.replace(/-/g, '')}`
       
