@@ -215,7 +215,9 @@ export default function Dashboard() {
         case 'send_reminder':
           // Send check-in reminder with link
           if (appointment.patient_phone) {
-            const checkinUrl = `${window.location.origin}/checkin/${id}`;
+            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+            const publicBaseUrl = projectId ? `https://${projectId}.lovableproject.com` : window.location.origin;
+            const checkinUrl = `${publicBaseUrl}/checkin/${id}`;
             const scheduledDate = new Date(appointment.scheduled_at);
             const dateStr = format(scheduledDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
             const timeStr = format(scheduledDate, 'HH:mm', { locale: ptBR });
