@@ -39,8 +39,44 @@ import {
   Loader2,
   Upload,
   Trash2,
+  FileText,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Message templates for dental clinic
+const messageTemplates = [
+  {
+    id: 'reminder',
+    name: '📅 Lembrete de Consulta',
+    message: 'Olá {nome}! 🦷\n\nPassando para lembrar da sua consulta agendada conosco.\n\nEm caso de dúvidas, estamos à disposição!\n\nClínica Sorriso Perfeito',
+  },
+  {
+    id: 'return',
+    name: '🔄 Retorno Preventivo',
+    message: 'Olá {nome}! 😊\n\nJá faz algum tempo desde sua última visita. Que tal agendar uma consulta de rotina?\n\nA prevenção é o melhor tratamento! 🦷\n\nAguardamos seu contato.\n\nClínica Sorriso Perfeito',
+  },
+  {
+    id: 'promo',
+    name: '💰 Promoção Especial',
+    message: 'Olá {nome}! 🎉\n\nTemos uma promoção especial para você!\n\n✨ Clareamento Dental com 20% de desconto\n✨ Limpeza + Avaliação por apenas 300 MT\n\nPromoção válida até o fim do mês. Agende já!\n\nClínica Sorriso Perfeito',
+  },
+  {
+    id: 'birthday',
+    name: '🎂 Feliz Aniversário',
+    message: 'Olá {nome}! 🎂🎈\n\nA equipe da Clínica Sorriso Perfeito deseja um Feliz Aniversário!\n\nComo presente especial, você ganha 15% de desconto em qualquer tratamento este mês!\n\nPasse para nos visitar! 🦷✨',
+  },
+  {
+    id: 'holiday',
+    name: '🎄 Boas Festas',
+    message: 'Olá {nome}! ✨\n\nA equipe da Clínica Sorriso Perfeito deseja Boas Festas e um Ano Novo repleto de saúde e sorrisos!\n\n🎄 Que 2025 seja incrível!\n\nObrigado por confiar em nós. 🦷💙',
+  },
+  {
+    id: 'thanks',
+    name: '💙 Agradecimento',
+    message: 'Olá {nome}! 😊\n\nAgradecemos pela confiança em nosso trabalho!\n\nSua satisfação é nossa maior recompensa. Se precisar de algo, estamos sempre à disposição.\n\nUm abraço da equipe!\n\nClínica Sorriso Perfeito 🦷',
+  },
+];
 
 interface Campaign {
   id: string;
@@ -296,16 +332,52 @@ export default function Campaigns() {
                   />
                 </div>
 
+                {/* Message Templates */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Templates Prontos
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {messageTemplates.map((template) => (
+                      <Button
+                        key={template.id}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => setNewCampaign({ 
+                          ...newCampaign, 
+                          message: template.message,
+                          name: newCampaign.name || template.name.replace(/^[^\s]+\s/, '')
+                        })}
+                      >
+                        {template.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Message */}
                 <div className="space-y-2">
-                  <Label htmlFor="message">Mensagem (use {'{nome}'} para personalizar)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="message">Mensagem</Label>
+                    <span className="text-xs text-muted-foreground">
+                      Variáveis: {'{nome}'}, {'{clinica}'}, {'{telefone}'}
+                    </span>
+                  </div>
                   <Textarea
                     id="message"
                     placeholder="Olá {nome}! Desejamos um Feliz Natal..."
                     value={newCampaign.message}
                     onChange={(e) => setNewCampaign({ ...newCampaign, message: e.target.value })}
-                    rows={4}
+                    rows={5}
+                    className="font-mono text-sm"
                   />
+                  {newCampaign.message && (
+                    <p className="text-xs text-muted-foreground">
+                      {newCampaign.message.length} caracteres
+                    </p>
+                  )}
                 </div>
 
                 {/* Media Upload */}
