@@ -5,6 +5,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Generate QR Code URL using a free API
+function generateQRCodeUrl(data: string, size: number = 300): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&format=png`
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -15,18 +20,19 @@ Deno.serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')?.replace(/\/$/, '')
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
+    const APP_URL = Deno.env.get('APP_URL') || 'https://iqejvdiluymquvvpsafq.lovableproject.com'
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     const now = new Date()
     console.log('Running appointment reminders at:', now.toISOString())
 
-    // Get appointments in the next 70 minutes (to catch both 1h and 10min reminders)
+    // Get appointments in the next 70 minutes (to catch 1h, 10min reminders)
     const oneHourFromNow = new Date(now.getTime() + 70 * 60 * 1000)
     
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
-      .select('*, tenant_settings:tenant_settings!appointments_tenant_id_fkey(clinic_name, clinic_address, clinic_phone, whatsapp_session_id)')
+      .select('*, tenant_settings:tenant_settings!appointments_tenant_id_fkey(clinic_name, clinic_address, clinic_phone, whatsapp_session_id, whatsapp_connected)')
       .in('status', ['pending', 'confirmed'])
       .gte('scheduled_at', now.toISOString())
       .lte('scheduled_at', oneHourFromNow.toISOString())
@@ -41,6 +47,7 @@ Deno.serve(async (req) => {
     const results = {
       oneHourReminders: 0,
       tenMinReminders: 0,
+      checkinLinksSent: 0,
       errors: 0,
     }
 
@@ -71,6 +78,8 @@ Deno.serve(async (req) => {
       let message = ''
       let shouldSend = false
       let reminderType = ''
+      let sendQRCode = false
+      let checkinUrl = ''
 
       // 1 hour reminder (55-65 minutes before)
       if (minutesUntil >= 55 && minutesUntil <= 65) {
@@ -89,7 +98,7 @@ Deno.serve(async (req) => {
           reminderType = '1h'
         }
       }
-      // 10 minute reminder (8-12 minutes before)
+      // 10 minute reminder with CHECK-IN LINK + QR CODE (8-12 minutes before)
       else if (minutesUntil >= 8 && minutesUntil <= 12) {
         // Check if we already sent 10min reminder
         const { data: existingReminder } = await supabase
@@ -101,16 +110,20 @@ Deno.serve(async (req) => {
           .maybeSingle()
 
         if (!existingReminder) {
-          message = `🔔 Atenção ${appointment.patient_name}!\n\nSua consulta começa em 10 minutos!\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\nJá estamos te esperando! 😊`
+          // Generate check-in URL
+          checkinUrl = `${APP_URL}/checkin/${appointment.id}`
+          
+          message = `🔔 Atenção ${appointment.patient_name}!\n\nSua consulta começa em 10 minutos!\n⏰ ${timeStr}\n📍 ${appointment.tenant_settings?.clinic_address || 'Endereço da clínica'}\n\n✅ *Faça seu check-in agora:*\n${checkinUrl}\n\nOu escaneie o QR Code abaixo ao chegar! 📱`
           shouldSend = true
           reminderType = '10min'
+          sendQRCode = true
         }
       }
 
       if (shouldSend && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
         try {
-          // Send WhatsApp message
-          const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+          // First send the text message
+          const textResponse = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -122,7 +135,7 @@ Deno.serve(async (req) => {
             }),
           })
 
-          if (response.ok) {
+          if (textResponse.ok) {
             console.log(`${reminderType} reminder sent to ${appointment.patient_name}`)
             
             // Save message to database
@@ -146,8 +159,50 @@ Deno.serve(async (req) => {
             } else {
               results.tenMinReminders++
             }
+
+            // Send QR Code image for 10min reminder
+            if (sendQRCode && checkinUrl) {
+              try {
+                const qrCodeUrl = generateQRCodeUrl(checkinUrl, 300)
+                console.log(`Sending QR code image: ${qrCodeUrl}`)
+
+                const imageResponse = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': EVOLUTION_API_KEY,
+                  },
+                  body: JSON.stringify({
+                    number: appointment.patient_phone,
+                    mediatype: 'image',
+                    media: qrCodeUrl,
+                    caption: `📱 Escaneie este QR Code para fazer check-in automaticamente!\n\nOu clique no link: ${checkinUrl}`,
+                  }),
+                })
+
+                if (imageResponse.ok) {
+                  console.log(`QR Code sent to ${appointment.patient_name}`)
+                  results.checkinLinksSent++
+                  
+                  // Save QR code message
+                  await supabase.from('messages').insert({
+                    tenant_id: tenantId,
+                    patient_id: appointment.patient_id,
+                    appointment_id: appointment.id,
+                    body: `[QR Code de Check-in enviado] Link: ${checkinUrl}`,
+                    direction: 'outbound',
+                    status: 'sent',
+                  })
+                } else {
+                  const errorText = await imageResponse.text()
+                  console.error(`Failed to send QR code:`, errorText)
+                }
+              } catch (qrError) {
+                console.error('Error sending QR code:', qrError)
+              }
+            }
           } else {
-            console.error(`Failed to send ${reminderType} reminder:`, await response.text())
+            console.error(`Failed to send ${reminderType} reminder:`, await textResponse.text())
             results.errors++
           }
         } catch (error) {
