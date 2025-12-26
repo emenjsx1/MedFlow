@@ -240,10 +240,25 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
+                    <div className="flex items-center justify-end gap-1">
+                      {/* Quick action: Send check-in link */}
+                      {(appointment.status === 'pending' || appointment.status === 'confirmed') && 
+                       appointment.patient_phone && 
+                       !appointment.checked_in_at && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                          onClick={() => handleAction(appointment.id, 'send_reminder', appointment.patient_name)}
+                          title="Enviar link de check-in"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
@@ -307,6 +322,7 @@ export default function AppointmentTable({ appointments, onAction }: Appointment
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
