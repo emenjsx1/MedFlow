@@ -18,7 +18,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type CheckinStatus = "loading" | "ready" | "confirming" | "success" | "error" | "expired" | "already_checked";
+type CheckinStatus = "loading" | "ready" | "confirming" | "success" | "error" | "expired" | "already_checked" | "too_early";
 
 const Checkin = () => {
   const { appointmentId } = useParams();
@@ -60,17 +60,21 @@ const Checkin = () => {
           return;
         }
 
-        // Check if appointment is today
+        // Check if appointment is within 5 hours (link available 5h before)
         const scheduledDate = new Date(appointmentData.scheduled_at);
-        const today = new Date();
-        const isToday = 
-          scheduledDate.getDate() === today.getDate() &&
-          scheduledDate.getMonth() === today.getMonth() &&
-          scheduledDate.getFullYear() === today.getFullYear();
+        const now = new Date();
+        const hoursUntilAppointment = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-        if (!isToday) {
+        // If appointment already passed
+        if (hoursUntilAppointment < -1) {
           setStatus("expired");
-          setErrorMessage("Este link de check-in só é válido no dia da consulta.");
+          setErrorMessage("Esta consulta já passou.");
+          return;
+        }
+
+        // If more than 5 hours until appointment, show "too early" message
+        if (hoursUntilAppointment > 5) {
+          setStatus("too_early");
           return;
         }
 
@@ -330,6 +334,41 @@ const Checkin = () => {
             </CardContent>
           )}
 
+          {/* Too Early State */}
+          {status === "too_early" && appointment && (
+            <CardContent className="p-0">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-500 p-8 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 mb-4">
+                  <Clock className="w-12 h-12 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Aguarde um Momento</h2>
+                <p className="text-white/90">O check-in ainda não está disponível</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-center">
+                    <span className="text-muted-foreground">Sua consulta está agendada para</span>
+                    <br />
+                    <span className="font-semibold text-foreground capitalize">
+                      {formatDateTime(appointment.scheduled_at).date}
+                    </span>
+                    <br />
+                    <span className="text-muted-foreground">às</span>{" "}
+                    <span className="font-bold text-xl">{formatDateTime(appointment.scheduled_at).time}</span>
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                  <Clock className="w-6 h-6 text-amber-600 shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    O link de check-in ficará disponível <strong className="text-foreground">5 horas antes</strong> da sua consulta. Por favor, volte mais tarde.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          )}
+
           {/* Expired State */}
           {status === "expired" && appointment && (
             <CardContent className="p-0">
@@ -344,7 +383,7 @@ const Checkin = () => {
               <div className="p-6">
                 <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                   <p className="text-sm text-center">
-                    <span className="text-muted-foreground">Sua consulta está agendada para</span>
+                    <span className="text-muted-foreground">Sua consulta estava agendada para</span>
                     <br />
                     <span className="font-semibold text-foreground capitalize">
                       {formatDateTime(appointment.scheduled_at).date}
@@ -355,7 +394,7 @@ const Checkin = () => {
                   </p>
                 </div>
                 <p className="text-center text-xs text-muted-foreground mt-4">
-                  Você receberá um novo link no dia da consulta.
+                  Por favor, entre em contacto com a recepção.
                 </p>
               </div>
             </CardContent>
