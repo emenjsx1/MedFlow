@@ -22,6 +22,7 @@ import TermsOfService from "./pages/TermsOfService";
 import Reports from "./pages/Reports";
 import Campaigns from "./pages/Campaigns";
 import Checkin from "./pages/Checkin";
+import MarketingGallery from "./pages/MarketingGallery";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/checkin/:appointmentId" element={<Checkin />} />
+              <Route path="/marketing" element={<MarketingGallery />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
