@@ -51,6 +51,41 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Buscar profissionais cadastrados
+    const { data: professionals } = await supabase
+      .from('professionals')
+      .select('id, name, specialty, working_days, business_hours_start, business_hours_end, appointment_duration_minutes')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+
+    let professionalsText = ''
+    if (professionals && professionals.length > 0) {
+      professionalsText = '\n\nPROFISSIONAIS DISPONÍVEIS:\n' + professionals.map(p => {
+        const days = (p.working_days || []).map((day: string) => {
+          const dayNames: Record<string, string> = {
+            'monday': 'Seg', 'tuesday': 'Ter', 'wednesday': 'Qua',
+            'thursday': 'Qui', 'friday': 'Sex', 'saturday': 'Sáb', 'sunday': 'Dom'
+          }
+          return dayNames[day] || day
+        }).join(', ')
+        return `- ${p.name}${p.specialty ? ` (${p.specialty})` : ''} - ${days} das ${p.business_hours_start || '08:00'} às ${p.business_hours_end || '18:00'}`
+      }).join('\n')
+    } else {
+      professionalsText = '\n\nNOTA: Não há profissionais cadastrados no sistema ainda.'
+    }
+
+    // Data e hora atual (timezone de Maputo/África)
+    const now = new Date()
+    const maputoTime = new Intl.DateTimeFormat('pt-MZ', {
+      timeZone: settings.timezone || 'Africa/Maputo',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(now)
+
     // Garantir que existe paciente
     let patientId: string | null = null
     const placeholderName = 'Sem nome'
@@ -146,12 +181,16 @@ Deno.serve(async (req) => {
 
     const CLINIC_PROMPT = `Tu és a assistente virtual de ${clinicName} no WhatsApp.
 
+DATA E HORA ATUAL: ${maputoTime}
+(Usa esta informação para saber que dia é hoje ao agendar consultas. Nunca agendes para datas no passado.)
+
 INFORMAÇÕES DA CLÍNICA:
 - Nome: ${clinicName}
 ${clinicPhone ? `- Telefone: ${clinicPhone}` : ''}
 ${clinicAddress ? `- Endereço: ${clinicAddress}` : ''}
 - Horário de funcionamento: ${businessHoursStart} às ${businessHoursEnd}
 - Dias de atendimento: ${workingDaysText}
+${professionalsText}
 
 ${businessContext ? `SOBRE A CLÍNICA:\n${businessContext}\n` : ''}
 
@@ -170,11 +209,21 @@ REGRAS DE RESPOSTA:
    - Responder dúvidas sobre a clínica
    - Confirmar ou remarcar consultas
 
-4. SE NÃO SOUBER: "Vou verificar com a equipa e já te respondo."
+4. PROFISSIONAIS:
+   - Só menciona profissionais que estão listados acima
+   - NUNCA inventes nomes de doutores ou profissionais
+   - Se perguntarem por alguém que não existe, diz que não temos esse profissional
 
-5. NUNCA:
+5. DATAS:
+   - Sempre considera a DATA ATUAL acima para calcular datas
+   - Hoje é ${maputoTime.split(',')[0]}
+   - Nunca agendes para datas passadas
+
+6. SE NÃO SOUBER: "Vou verificar com a equipa e já te respondo."
+
+7. NUNCA:
    - Dizer que és IA/bot
-   - Inventar informações
+   - Inventar informações sobre profissionais ou serviços
    - Respostas longas tipo artigo
 ${faqsText}
 

@@ -41,6 +41,8 @@ import {
   Trash2,
   FileText,
   Sparkles,
+  Eye,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -92,6 +94,18 @@ interface Campaign {
   sent_at: string | null;
 }
 
+interface CampaignRecipient {
+  id: string;
+  patient_id: string;
+  status: string;
+  sent_at: string | null;
+  error_message: string | null;
+  patient: {
+    name: string;
+    whatsapp: string;
+  } | null;
+}
+
 interface Patient {
   id: string;
   name: string;
@@ -103,6 +117,8 @@ export default function Campaigns() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [recipientsDialogOpen, setRecipientsDialogOpen] = useState(false);
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     message: '',
@@ -124,6 +140,30 @@ export default function Campaigns() {
       return data as Campaign[];
     },
     enabled: !!tenantId,
+  });
+
+  // Fetch campaign recipients when a campaign is selected
+  const { data: recipients, isLoading: recipientsLoading } = useQuery({
+    queryKey: ['campaign-recipients', selectedCampaign?.id],
+    queryFn: async () => {
+      if (!selectedCampaign) return [];
+      const { data, error } = await supabase
+        .from('campaign_recipients')
+        .select(`
+          id,
+          patient_id,
+          status,
+          sent_at,
+          error_message,
+          patient:patients(name, whatsapp)
+        `)
+        .eq('campaign_id', selectedCampaign.id)
+        .order('sent_at', { ascending: false, nullsFirst: false });
+      
+      if (error) throw error;
+      return data as unknown as CampaignRecipient[];
+    },
+    enabled: !!selectedCampaign?.id && recipientsDialogOpen,
   });
 
   // Fetch patients for selection
@@ -572,6 +612,7 @@ export default function Campaigns() {
                     <TableHead>Status</TableHead>
                     <TableHead>Destinatários</TableHead>
                     <TableHead>Enviados</TableHead>
+                    <TableHead>Enviado em</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -613,10 +654,27 @@ export default function Campaigns() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {campaign.sent_at 
+                            ? format(new Date(campaign.sent_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                            : <span className="text-muted-foreground">-</span>
+                          }
+                        </TableCell>
+                        <TableCell>
                           {format(new Date(campaign.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedCampaign(campaign);
+                                setRecipientsDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Ver
+                            </Button>
                             {campaign.status === 'draft' && (
                               <Button
                                 size="sm"
@@ -648,6 +706,98 @@ export default function Campaigns() {
             )}
           </CardContent>
         </Card>
+
+        {/* Recipients Dialog */}
+        <Dialog open={recipientsDialogOpen} onOpenChange={setRecipientsDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Destinatários - {selectedCampaign?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Summary */}
+              {selectedCampaign && (
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold">{selectedCampaign.total_recipients}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                  <div className="p-3 bg-success/10 rounded-lg">
+                    <p className="text-2xl font-bold text-success">{selectedCampaign.sent_count}</p>
+                    <p className="text-xs text-muted-foreground">Enviados</p>
+                  </div>
+                  <div className="p-3 bg-destructive/10 rounded-lg">
+                    <p className="text-2xl font-bold text-destructive">{selectedCampaign.failed_count}</p>
+                    <p className="text-xs text-muted-foreground">Falhas</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Recipients Table */}
+              {recipientsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : recipients?.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum destinatário encontrado.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paciente</TableHead>
+                      <TableHead>WhatsApp</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Enviado em</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recipients?.map((recipient) => {
+                      const statusMap: Record<string, { label: string; className: string; icon: typeof Clock }> = {
+                        pending: { label: 'Pendente', className: 'bg-muted text-muted-foreground', icon: Clock },
+                        sent: { label: 'Enviado', className: 'bg-success/15 text-success', icon: CheckCircle2 },
+                        failed: { label: 'Falhou', className: 'bg-destructive/15 text-destructive', icon: AlertCircle },
+                      };
+                      const status = statusMap[recipient.status] || statusMap.pending;
+                      const StatusIcon = status.icon;
+
+                      return (
+                        <TableRow key={recipient.id}>
+                          <TableCell className="font-medium">
+                            {recipient.patient?.name || 'Sem nome'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {recipient.patient?.whatsapp || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={status.className}>
+                              <StatusIcon className="w-3 h-3 mr-1" />
+                              {status.label}
+                            </Badge>
+                            {recipient.error_message && (
+                              <p className="text-xs text-destructive mt-1">
+                                {recipient.error_message}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {recipient.sent_at
+                              ? format(new Date(recipient.sent_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                              : <span className="text-muted-foreground">-</span>
+                            }
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
