@@ -5,37 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// ========================================
-// MODO ASSISTENTE PESSOAL DO EMEN
-// Temporário - apenas responde baseado no prompt personalizado
-// ========================================
-
-const EMEN_ASSISTANT_PROMPT = `Tu és o Assistente do Emen no WhatsApp.
-
-REGRAS DE RESPOSTA:
-
-1. RESPOSTAS CURTAS - máximo 2-3 frases. Nada de textos longos.
-
-2. FORMATAÇÃO NATURAL:
-   - SEM asteriscos ou markdown (*negrito*, etc)
-   - SEM listas com bullets
-   - Escreve como uma pessoa normal escreve no WhatsApp
-   - Pode usar emoji de vez em quando 😊
-
-3. PRIMEIRA MENSAGEM: Saudação simples + resposta direta
-   Exemplo: "Olá! Sou assistente do Emen. [resposta curta à pergunta]"
-
-4. MENSAGENS SEGUINTES: Responde direto, sem repetir apresentação
-
-5. SE NÃO SOUBER: "Vou passar pro Emen e ele te responde."
-
-6. NUNCA:
-   - Dizer que és IA/bot
-   - Inventar preços ou prazos
-   - Respostas longas tipo artigo
-
-Contexto: Emen é empreendedor digital, trabalha com projetos e soluções digitais.`
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -64,13 +33,13 @@ Deno.serve(async (req) => {
     const patientPhone = normalizePhone(rawPatientPhone)
     const patientName = typeof rawPatientName === 'string' ? rawPatientName.trim() : ''
 
-    console.log('=== MODO ASSISTENTE PESSOAL EMEN ===')
+    console.log('=== BOOKING AGENT - MODO CLÍNICA ===')
     console.log('Request:', { tenantId, patientPhone, message, messageId })
 
-    // Get tenant settings (para obter whatsapp_session_id)
+    // Get tenant settings
     const { data: settings, error: settingsError } = await supabase
       .from('tenant_settings')
-      .select('whatsapp_session_id')
+      .select('*')
       .eq('tenant_id', tenantId)
       .single()
 
@@ -82,7 +51,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Garantir que existe paciente (para manter histórico e evitar repetir saudação)
+    // Garantir que existe paciente
     let patientId: string | null = null
     const placeholderName = 'Sem nome'
 
@@ -120,7 +89,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Detectar se é a primeira mensagem (para só saudar uma vez)
+    // Detectar se é a primeira mensagem
     const hasConversationHistory = Array.isArray(conversationHistory) && conversationHistory.length > 0
 
     const { data: previousMessages } = await supabase
@@ -133,7 +102,7 @@ Deno.serve(async (req) => {
     const hasStoredHistory = (previousMessages?.length ?? 0) > 0
     const isFirstMessage = !hasConversationHistory && !hasStoredHistory
 
-    // Salvar mensagem recebida no banco (com patient_id para o webhook conseguir montar histórico)
+    // Salvar mensagem recebida no banco
     await supabase.from('messages').insert({
       tenant_id: tenantId,
       patient_id: patientId,
@@ -142,18 +111,87 @@ Deno.serve(async (req) => {
       sent_at: new Date().toISOString(),
     })
 
-    const turnDirective = isFirstMessage
-      ? 'Esta é a PRIMEIRA mensagem desta conversa. Faz uma saudação curta UMA vez e depois responde/age em cima do que a pessoa perguntou. Se não puderes responder por ser assunto pessoal, recusa educadamente e redireciona para temas de projetos/negócios.'
-      : 'Esta conversa JÁ está em andamento. Não te apresentes de novo (não repitas "Sou o assistente do Emen" e não repitas saudação). Responde diretamente ao conteúdo da última mensagem.'
+    // Construir prompt da clínica baseado nas configurações
+    const clinicName = settings.clinic_name || 'nossa clínica'
+    const clinicPhone = settings.clinic_phone || ''
+    const clinicAddress = settings.clinic_address || ''
+    const businessHoursStart = settings.business_hours_start || '08:00'
+    const businessHoursEnd = settings.business_hours_end || '18:00'
+    const workingDays = settings.working_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    
+    const workingDaysText = workingDays.map((day: string) => {
+      const days: Record<string, string> = {
+        'monday': 'Segunda',
+        'tuesday': 'Terça',
+        'wednesday': 'Quarta',
+        'thursday': 'Quinta',
+        'friday': 'Sexta',
+        'saturday': 'Sábado',
+        'sunday': 'Domingo'
+      }
+      return days[day] || day
+    }).join(', ')
 
-    // Preparar mensagens para IA - APENAS o prompt do Emen
+    // Contexto personalizado da clínica
+    const businessContext = settings.agent_business_context || ''
+    const greetingMessage = settings.agent_greeting_message || ''
+    const faqs = settings.agent_faqs || []
+
+    let faqsText = ''
+    if (Array.isArray(faqs) && faqs.length > 0) {
+      faqsText = '\n\nPERGUNTAS FREQUENTES:\n' + faqs.map((faq: { question: string; answer: string }) => 
+        `P: ${faq.question}\nR: ${faq.answer}`
+      ).join('\n\n')
+    }
+
+    const CLINIC_PROMPT = `Tu és a assistente virtual de ${clinicName} no WhatsApp.
+
+INFORMAÇÕES DA CLÍNICA:
+- Nome: ${clinicName}
+${clinicPhone ? `- Telefone: ${clinicPhone}` : ''}
+${clinicAddress ? `- Endereço: ${clinicAddress}` : ''}
+- Horário de funcionamento: ${businessHoursStart} às ${businessHoursEnd}
+- Dias de atendimento: ${workingDaysText}
+
+${businessContext ? `SOBRE A CLÍNICA:\n${businessContext}\n` : ''}
+
+REGRAS DE RESPOSTA:
+
+1. RESPOSTAS CURTAS - máximo 2-3 frases. Nada de textos longos.
+
+2. FORMATAÇÃO NATURAL:
+   - SEM asteriscos ou markdown (*negrito*, etc)
+   - SEM listas com bullets
+   - Escreve como uma pessoa normal escreve no WhatsApp
+   - Pode usar emoji de vez em quando 😊
+
+3. OBJETIVO PRINCIPAL:
+   - Ajudar pacientes a agendar consultas
+   - Responder dúvidas sobre a clínica
+   - Confirmar ou remarcar consultas
+
+4. SE NÃO SOUBER: "Vou verificar com a equipa e já te respondo."
+
+5. NUNCA:
+   - Dizer que és IA/bot
+   - Inventar informações
+   - Respostas longas tipo artigo
+${faqsText}
+
+${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
+
+    const turnDirective = isFirstMessage
+      ? 'Esta é a PRIMEIRA mensagem desta conversa. Faz uma saudação curta UMA vez e depois responde ao que a pessoa perguntou.'
+      : 'Esta conversa JÁ está em andamento. Não te apresentes de novo. Responde diretamente ao conteúdo da última mensagem.'
+
+    // Preparar mensagens para IA
     const messages = [
-      { role: 'system', content: `${EMEN_ASSISTANT_PROMPT}\n\n${turnDirective}` },
+      { role: 'system', content: `${CLINIC_PROMPT}\n\n${turnDirective}` },
       ...conversationHistory,
       { role: 'user', content: message }
     ]
 
-    console.log('Sending to AI with Emen prompt...', { isFirstMessage, hasConversationHistory, hasStoredHistory })
+    console.log('Sending to AI with clinic prompt...', { isFirstMessage, clinicName })
 
     // Usar Lovable AI Gateway
     if (!LOVABLE_API_KEY) {
@@ -239,7 +277,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         reply,
-        mode: 'emen_personal_assistant'
+        mode: 'clinic_assistant'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
