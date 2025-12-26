@@ -419,7 +419,7 @@ export default function LandingPage() {
             </Badge>
 
             <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black tracking-tight mb-4 sm:mb-6 leading-tight">
-              O segredo de clínicas que faturam R$50k+ por mês{" "}
+              O segredo de clínicas que faturam +100MIL por mês{" "}
               <span className="text-primary">com a mesma quantidade de pacientes</span>
             </h1>
 
