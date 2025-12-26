@@ -225,6 +225,11 @@ REGRAS DE RESPOSTA:
    - Dizer que és IA/bot
    - Inventar informações sobre profissionais ou serviços
    - Respostas longas tipo artigo
+
+8. AGENDAMENTOS:
+   - Quando um agendamento for confirmado, responde normalmente
+   - Inclui na resposta algo como "Consulta agendada para [data] às [hora]"
+   - Após confirmar agendamento, menciona que o paciente receberá um link para check-in antes da consulta
 ${faqsText}
 
 ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
@@ -294,12 +299,53 @@ ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
       sent_at: new Date().toISOString(),
     })
 
+    // Verificar se foi feito um agendamento e enviar link de check-in
+    // Buscar agendamento recente do paciente (criado nos últimos 2 minutos)
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    const { data: recentAppointment } = await supabase
+      .from('appointments')
+      .select('id, scheduled_at, professional_name, patient_name')
+      .eq('tenant_id', tenantId)
+      .eq('patient_id', patientId)
+      .eq('status', 'pending')
+      .gte('created_at', twoMinutesAgo)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    // Se há um agendamento recente, enviar link de check-in
+    let checkinMessage = ''
+    if (recentAppointment && EVOLUTION_API_URL && EVOLUTION_API_KEY && settings?.whatsapp_session_id) {
+      const appointmentDate = new Date(recentAppointment.scheduled_at)
+      const formattedDate = new Intl.DateTimeFormat('pt-MZ', {
+        timeZone: settings.timezone || 'Africa/Maputo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(appointmentDate)
+      
+      const formattedTime = new Intl.DateTimeFormat('pt-MZ', {
+        timeZone: settings.timezone || 'Africa/Maputo',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(appointmentDate)
+
+      // URL base do app (usa a variável de ambiente ou fallback)
+      const appUrl = Deno.env.get('APP_URL') || 'https://agenda-clin.lovable.app'
+      const checkinLink = `${appUrl}/checkin/${recentAppointment.id}`
+
+      checkinMessage = `\n\n📋 *Link de Check-in*\nAntes da sua consulta, acesse o link abaixo para confirmar sua presença (disponível 5h antes do horário agendado):\n\n${checkinLink}`
+
+      console.log('Sending check-in link for appointment:', recentAppointment.id)
+    }
+
     // Enviar resposta via WhatsApp
     if (EVOLUTION_API_URL && EVOLUTION_API_KEY && settings?.whatsapp_session_id) {
       const formattedPhone = patientPhone.replace(/\D/g, '')
       const whatsappNumber = formattedPhone.includes('@') ? formattedPhone : `${formattedPhone}@s.whatsapp.net`
       
       try {
+        // Enviar resposta principal
         const sendResponse = await fetch(`${EVOLUTION_API_URL}/message/sendText/${settings.whatsapp_session_id}`, {
           method: 'POST',
           headers: {
@@ -316,6 +362,38 @@ ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
           console.error('WhatsApp send failed:', await sendResponse.text())
         } else {
           console.log('WhatsApp message sent successfully')
+        }
+
+        // Se houver link de check-in, enviar como mensagem separada
+        if (checkinMessage) {
+          await new Promise(resolve => setTimeout(resolve, 1000)) // Pequena pausa
+          
+          const checkinResponse = await fetch(`${EVOLUTION_API_URL}/message/sendText/${settings.whatsapp_session_id}`, {
+            method: 'POST',
+            headers: {
+              'apikey': EVOLUTION_API_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              number: whatsappNumber,
+              text: checkinMessage.trim(),
+            }),
+          })
+
+          if (!checkinResponse.ok) {
+            console.error('Check-in link send failed:', await checkinResponse.text())
+          } else {
+            console.log('Check-in link sent successfully')
+            
+            // Salvar mensagem do link de check-in
+            await supabase.from('messages').insert({
+              tenant_id: tenantId,
+              patient_id: patientId,
+              body: checkinMessage.trim(),
+              direction: 'outbound',
+              sent_at: new Date().toISOString(),
+            })
+          }
         }
       } catch (error) {
         console.error('WhatsApp send error:', error)

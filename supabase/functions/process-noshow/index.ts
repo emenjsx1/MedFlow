@@ -54,17 +54,23 @@ Deno.serve(async (req) => {
         )
       }
 
-      // Verify appointment is today
+      // Verify appointment is within 5 hours (check-in window)
       const scheduledDate = new Date(appointment.scheduled_at)
-      const today = new Date()
-      const isToday = 
-        scheduledDate.getDate() === today.getDate() &&
-        scheduledDate.getMonth() === today.getMonth() &&
-        scheduledDate.getFullYear() === today.getFullYear()
+      const now = new Date()
+      const hoursUntilAppointment = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60)
 
-      if (!isToday) {
+      // If appointment already passed (more than 1 hour ago), reject
+      if (hoursUntilAppointment < -1) {
         return new Response(
-          JSON.stringify({ error: 'Check-in só disponível no dia da consulta' }),
+          JSON.stringify({ error: 'Esta consulta já passou' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // If more than 5 hours until appointment, reject
+      if (hoursUntilAppointment > 5) {
+        return new Response(
+          JSON.stringify({ error: 'Check-in só disponível 5 horas antes da consulta' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
