@@ -644,10 +644,10 @@ export default function LandingPage() {
                     </Badge>}
                 </CardHeader>
                 <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
-                  <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
-                    {plan.features.map((feature, idx) => <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                        <span>{feature}</span>
+                  <div className="grid grid-cols-1 gap-1">
+                    {plan.features.map((feature, idx) => <div key={idx} className="flex items-center gap-1.5 text-xs">
+                        <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        <span className="truncate">{feature}</span>
                       </div>)}
                   </div>
                   <Button className={`w-full text-sm sm:text-base ${plan.popular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan)}>
