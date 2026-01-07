@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
       // Save the inbound message but don't process with AI
       const { data: patient } = await supabase
         .from('patients')
-        .select('id')
+        .select('id, name')
         .eq('tenant_id', tenantId)
         .eq('whatsapp', patientPhone)
         .maybeSingle()
@@ -415,6 +415,36 @@ Deno.serve(async (req) => {
           direction: 'inbound',
           sent_at: new Date().toISOString(),
         })
+
+        // Create notification for human takeover alert
+        await supabase.from('user_notifications').insert({
+          tenant_id: tenantId,
+          user_id: null, // Broadcast to all users in tenant
+          type: 'takeover_message',
+          title: '📩 Nova mensagem (Takeover)',
+          message: `${patient.name || patientPhone}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`,
+          data: { 
+            patient_name: patient.name || patientPhone,
+            patient_phone: patientPhone,
+            patient_id: patient.id
+          },
+        })
+
+        // Update messages count in takeover history using raw increment
+        const { data: historyRecord } = await supabase
+          .from('takeover_history')
+          .select('id, messages_during_takeover')
+          .eq('tenant_id', tenantId)
+          .eq('patient_phone', patientPhone)
+          .is('ended_at', null)
+          .maybeSingle()
+
+        if (historyRecord) {
+          await supabase
+            .from('takeover_history')
+            .update({ messages_during_takeover: (historyRecord.messages_during_takeover || 0) + 1 })
+            .eq('id', historyRecord.id)
+        }
       }
 
       return new Response(

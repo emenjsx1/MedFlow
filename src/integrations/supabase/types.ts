@@ -350,37 +350,115 @@ export type Database = {
           },
         ]
       }
+      patient_notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_pinned: boolean | null
+          note_type: string
+          patient_id: string
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          note_type?: string
+          patient_id: string
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          note_type?: string
+          patient_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
+          assigned_to_user_id: string | null
           created_at: string | null
           email: string | null
           id: string
+          last_interaction_at: string | null
           name: string
           notes: string | null
+          pipeline_stage: string | null
+          priority: number | null
           risk_score: number | null
+          source: string | null
+          status: string | null
+          tags: string[] | null
           tenant_id: string
+          total_appointments: number | null
+          total_revenue: number | null
           updated_at: string | null
           whatsapp: string
         }
         Insert: {
+          assigned_to_user_id?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          last_interaction_at?: string | null
           name: string
           notes?: string | null
+          pipeline_stage?: string | null
+          priority?: number | null
           risk_score?: number | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
           tenant_id: string
+          total_appointments?: number | null
+          total_revenue?: number | null
           updated_at?: string | null
           whatsapp: string
         }
         Update: {
+          assigned_to_user_id?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          last_interaction_at?: string | null
           name?: string
           notes?: string | null
+          pipeline_stage?: string | null
+          priority?: number | null
           risk_score?: number | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
           tenant_id?: string
+          total_appointments?: number | null
+          total_revenue?: number | null
           updated_at?: string | null
           whatsapp?: string
         }
@@ -482,6 +560,66 @@ export type Database = {
           },
         ]
       }
+      takeover_history: {
+        Row: {
+          created_at: string | null
+          duration_minutes: number | null
+          ended_at: string | null
+          id: string
+          messages_during_takeover: number | null
+          notes: string | null
+          outcome: string | null
+          patient_id: string | null
+          patient_phone: string
+          started_at: string
+          started_by_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          messages_during_takeover?: number | null
+          notes?: string | null
+          outcome?: string | null
+          patient_id?: string | null
+          patient_phone: string
+          started_at?: string
+          started_by_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          messages_during_takeover?: number | null
+          notes?: string | null
+          outcome?: string | null
+          patient_id?: string | null
+          patient_phone?: string
+          started_at?: string
+          started_by_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "takeover_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "takeover_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_secrets: {
         Row: {
           created_at: string | null
@@ -549,6 +687,9 @@ export type Database = {
           reconfirm_hours_before: number | null
           reconfirmation_template: string | null
           response_window_hours: number | null
+          takeover_alert_browser_notification: boolean | null
+          takeover_alert_email: boolean | null
+          takeover_alert_sound: boolean | null
           tenant_id: string
           timezone: string | null
           updated_at: string | null
@@ -583,6 +724,9 @@ export type Database = {
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
+          takeover_alert_browser_notification?: boolean | null
+          takeover_alert_email?: boolean | null
+          takeover_alert_sound?: boolean | null
           tenant_id: string
           timezone?: string | null
           updated_at?: string | null
@@ -617,6 +761,9 @@ export type Database = {
           reconfirm_hours_before?: number | null
           reconfirmation_template?: string | null
           response_window_hours?: number | null
+          takeover_alert_browser_notification?: boolean | null
+          takeover_alert_email?: boolean | null
+          takeover_alert_sound?: boolean | null
           tenant_id?: string
           timezone?: string | null
           updated_at?: string | null
@@ -659,6 +806,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          tenant_id: string
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          tenant_id: string
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          tenant_id?: string
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

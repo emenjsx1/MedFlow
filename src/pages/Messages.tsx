@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -14,6 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import {
   Search,
   MessageSquare,
@@ -35,13 +42,18 @@ import {
   User,
   Play,
   Pause,
+  History,
+  UserCircle,
 } from 'lucide-react';
-import { format, addMinutes } from 'date-fns';
+import { format, addMinutes, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { TakeoverHistoryPanel } from '@/components/takeover/TakeoverHistoryPanel';
+import { PatientCRMPanel } from '@/components/crm/PatientCRMPanel';
+import { useTakeoverAlerts } from '@/hooks/useTakeoverAlerts';
 
 interface Message {
   id: string;
@@ -123,6 +135,10 @@ export default function Messages() {
   const [agentConversations, setAgentConversations] = useState<AgentConversation[]>([]);
   const [togglingAgent, setTogglingAgent] = useState(false);
   const [selectedReactivation, setSelectedReactivation] = useState('30');
+  const [activeTab, setActiveTab] = useState('conversations');
+
+  // Initialize takeover alerts
+  useTakeoverAlerts({ soundEnabled: true, browserNotificationEnabled: true });
 
   // Load agent conversations status
   const loadAgentConversations = useCallback(async () => {
@@ -142,7 +158,7 @@ export default function Messages() {
   }, [tenantId]);
 
   // Toggle agent for a specific conversation
-  const toggleAgentForConversation = async (patientPhone: string, pause: boolean) => {
+  const toggleAgentForConversation = async (patientPhone: string, pause: boolean, patientId?: string | null) => {
     if (!tenantId || !user) return;
     
     setTogglingAgent(true);
@@ -154,6 +170,23 @@ export default function Messages() {
         : null;
       
       if (existingConv) {
+        // If we're ending a takeover (reactivating AI), record the history
+        if (!pause && existingConv.agent_paused && existingConv.agent_paused_at) {
+          const durationMinutes = differenceInMinutes(new Date(), new Date(existingConv.agent_paused_at));
+          
+          // Save takeover history
+          await supabase.from('takeover_history').insert({
+            tenant_id: tenantId,
+            patient_id: patientId || null,
+            patient_phone: patientPhone,
+            started_by_user_id: user.id,
+            started_at: existingConv.agent_paused_at,
+            ended_at: new Date().toISOString(),
+            duration_minutes: durationMinutes,
+            outcome: 'transferred_back_to_ai',
+          });
+        }
+        
         // Update existing conversation
         const { error } = await supabase
           .from('agent_conversations')
@@ -180,6 +213,18 @@ export default function Messages() {
           });
         
         if (error) throw error;
+      }
+
+      // If starting a new takeover, save to history
+      if (pause) {
+        await supabase.from('takeover_history').insert({
+          tenant_id: tenantId,
+          patient_id: patientId || null,
+          patient_phone: patientPhone,
+          started_by_user_id: user.id,
+          started_at: new Date().toISOString(),
+          outcome: null, // Will be updated when takeover ends
+        });
       }
       
       await loadAgentConversations();
