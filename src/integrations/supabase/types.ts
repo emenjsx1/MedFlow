@@ -418,7 +418,6 @@ export type Database = {
           tags: string[] | null
           tenant_id: string
           total_appointments: number | null
-          total_revenue: number | null
           updated_at: string | null
           whatsapp: string
         }
@@ -438,7 +437,6 @@ export type Database = {
           tags?: string[] | null
           tenant_id: string
           total_appointments?: number | null
-          total_revenue?: number | null
           updated_at?: string | null
           whatsapp: string
         }
@@ -458,7 +456,6 @@ export type Database = {
           tags?: string[] | null
           tenant_id?: string
           total_appointments?: number | null
-          total_revenue?: number | null
           updated_at?: string | null
           whatsapp?: string
         }
@@ -677,6 +674,9 @@ export type Database = {
           confirm_hours_before: number | null
           confirmation_template: string | null
           created_at: string | null
+          followup_days_threshold: number | null
+          followup_enabled: boolean | null
+          followup_message_template: string | null
           google_calendar_connected: boolean | null
           google_calendar_id: string | null
           id: string
@@ -714,6 +714,9 @@ export type Database = {
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
+          followup_days_threshold?: number | null
+          followup_enabled?: boolean | null
+          followup_message_template?: string | null
           google_calendar_connected?: boolean | null
           google_calendar_id?: string | null
           id?: string
@@ -751,6 +754,9 @@ export type Database = {
           confirm_hours_before?: number | null
           confirmation_template?: string | null
           created_at?: string | null
+          followup_days_threshold?: number | null
+          followup_enabled?: boolean | null
+          followup_message_template?: string | null
           google_calendar_connected?: boolean | null
           google_calendar_id?: string | null
           id?: string

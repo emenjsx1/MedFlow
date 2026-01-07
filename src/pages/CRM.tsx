@@ -34,14 +34,14 @@ import {
   Mail,
   Star,
   Activity,
-  DollarSign,
   ArrowRight,
   Download,
   FileSpreadsheet,
   FileJson,
   GripVertical,
+  Calendar,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,6 +49,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { PatientCRMPanel } from '@/components/crm/PatientCRMPanel';
 import { exportToCSV, exportToJSON } from '@/lib/export';
+import { DateRangeFilter } from '@/components/filters/DateRangeFilter';
 import {
   DndContext,
   DragEndEvent,
@@ -73,7 +74,6 @@ interface Patient {
   source?: string;
   priority?: number;
   total_appointments?: number;
-  total_revenue?: number;
   last_interaction_at?: string;
   created_at?: string;
 }
@@ -113,7 +113,6 @@ const crmExportColumns = [
   }},
   { header: 'Tags', accessor: (p: Patient) => (p.tags || []).join(', ') },
   { header: 'Consultas', accessor: 'total_appointments' as const },
-  { header: 'Receita', accessor: (p: Patient) => `R$ ${(p.total_revenue || 0).toLocaleString('pt-BR')}` },
   { header: 'Última Interação', accessor: (p: Patient) => 
     p.last_interaction_at ? format(new Date(p.last_interaction_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : ''
   },
@@ -253,6 +252,8 @@ export default function CRM() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [pipelineFilter, setPipelineFilter] = useState('all');
+  const [dateStartFilter, setDateStartFilter] = useState<string | null>(null);
+  const [dateEndFilter, setDateEndFilter] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
@@ -393,12 +394,35 @@ export default function CRM() {
     }
   };
 
-  const filteredPatients = patients.filter(
-    (p) =>
+  const filteredPatients = patients.filter((p) => {
+    // Text search
+    const matchesSearch = 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.whatsapp.includes(searchQuery) ||
-      (p.email && p.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+      (p.email && p.email.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Date filter
+    let matchesDate = true;
+    if (dateStartFilter || dateEndFilter) {
+      const patientDate = p.created_at ? new Date(p.created_at) : null;
+      if (patientDate) {
+        if (dateStartFilter && dateEndFilter) {
+          matchesDate = isWithinInterval(patientDate, {
+            start: startOfDay(parseISO(dateStartFilter)),
+            end: endOfDay(parseISO(dateEndFilter)),
+          });
+        } else if (dateStartFilter) {
+          matchesDate = patientDate >= startOfDay(parseISO(dateStartFilter));
+        } else if (dateEndFilter) {
+          matchesDate = patientDate <= endOfDay(parseISO(dateEndFilter));
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+    
+    return matchesSearch && matchesDate;
+  });
 
   // Group patients by pipeline stage for kanban view
   const patientsByStage = pipelineStages.reduce((acc, stage) => {
@@ -411,7 +435,7 @@ export default function CRM() {
     total: patients.length,
     active: patients.filter(p => p.status === 'active').length,
     vip: patients.filter(p => p.status === 'vip').length,
-    totalRevenue: patients.reduce((sum, p) => sum + (p.total_revenue || 0), 0),
+    totalAppointments: patients.reduce((sum, p) => sum + (p.total_appointments || 0), 0),
   };
 
   const openPatientDetail = (patient: Patient) => {
@@ -520,11 +544,11 @@ export default function CRM() {
           <Card>
             <CardContent className="flex items-center gap-4 p-6">
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-blue-600" />
+                <Calendar className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">R$ {stats.totalRevenue.toLocaleString('pt-BR')}</p>
-                <p className="text-sm text-muted-foreground">Receita Total</p>
+                <p className="text-2xl font-bold">{stats.totalAppointments}</p>
+                <p className="text-sm text-muted-foreground">Total Consultas</p>
               </div>
             </CardContent>
           </Card>
@@ -571,6 +595,13 @@ export default function CRM() {
                   ))}
                 </SelectContent>
               </Select>
+              <DateRangeFilter
+                startDate={dateStartFilter}
+                endDate={dateEndFilter}
+                onStartDateChange={setDateStartFilter}
+                onEndDateChange={setDateEndFilter}
+                className="w-full sm:w-auto"
+              />
             </div>
           </CardContent>
         </Card>
@@ -670,7 +701,7 @@ export default function CRM() {
                                   {patient.total_appointments || 0} consultas
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  R$ {(patient.total_revenue || 0).toLocaleString('pt-BR')}
+                                  {patient.last_interaction_at ? format(new Date(patient.last_interaction_at), 'dd/MM/yy', { locale: ptBR }) : '-'}
                                 </p>
                               </div>
                               <ArrowRight className="w-4 h-4 text-muted-foreground" />

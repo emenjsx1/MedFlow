@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Star,
   Phone,
   Mail,
   MessageSquare,
@@ -25,7 +24,6 @@ import {
   Clock,
   User,
   Tag,
-  DollarSign,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,7 +52,6 @@ interface Patient {
   source?: string;
   priority?: number;
   total_appointments?: number;
-  total_revenue?: number;
   last_interaction_at?: string;
 }
 
@@ -197,22 +194,13 @@ export function PatientCRMPanel({ patient, onUpdate }: PatientCRMPanelProps) {
   return (
     <div className="space-y-4">
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Card className="p-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <div>
               <p className="text-lg font-bold">{localPatient.total_appointments || 0}</p>
               <p className="text-xs text-muted-foreground">Consultas</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-muted-foreground" />
-            <div>
-              <p className="text-lg font-bold">{localPatient.total_revenue || 0}</p>
-              <p className="text-xs text-muted-foreground">Receita</p>
             </div>
           </div>
         </Card>
@@ -225,7 +213,7 @@ export function PatientCRMPanel({ patient, onUpdate }: PatientCRMPanelProps) {
                   ? format(new Date(localPatient.last_interaction_at), 'dd/MM', { locale: ptBR })
                   : '-'}
               </p>
-              <p className="text-xs text-muted-foreground">Última</p>
+              <p className="text-xs text-muted-foreground">Última Interação</p>
             </div>
           </div>
         </Card>
