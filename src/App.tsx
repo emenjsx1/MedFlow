@@ -23,6 +23,8 @@ import Reports from "./pages/Reports";
 import Campaigns from "./pages/Campaigns";
 import Checkin from "./pages/Checkin";
 import MarketingGallery from "./pages/MarketingGallery";
+import CRM from "./pages/CRM";
+import TakeoverHistory from "./pages/TakeoverHistory";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,8 @@ const App = () => (
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/checkin/:appointmentId" element={<Checkin />} />
               <Route path="/marketing" element={<MarketingGallery />} />
+              <Route path="/crm" element={<CRM />} />
+              <Route path="/takeover-history" element={<TakeoverHistory />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />

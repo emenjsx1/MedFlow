@@ -1,11 +1,11 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, MessageSquare, Users, Settings } from 'lucide-react';
+import { Home, MessageSquare, Users, Settings, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/dashboard', icon: Home, label: 'Início' },
-  { path: '/appointments', icon: Calendar, label: 'Agenda' },
   { path: '/messages', icon: MessageSquare, label: 'Mensagens' },
+  { path: '/crm', icon: Target, label: 'CRM' },
   { path: '/patients', icon: Users, label: 'Pacientes' },
   { path: '/settings', icon: Settings, label: 'Config' },
 ];
