@@ -1,10 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Search,
   MessageSquare,
@@ -22,8 +31,12 @@ import {
   Gift,
   Heart,
   Clock,
+  Bot,
+  User,
+  Play,
+  Pause,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +51,14 @@ interface Message {
   status: 'sent' | 'delivered' | 'read' | 'failed';
   sent_at: string;
   patient?: { name: string; whatsapp: string } | null;
+}
+
+interface AgentConversation {
+  id: string;
+  patient_phone: string;
+  agent_paused: boolean;
+  agent_paused_at: string | null;
+  agent_reactivate_at: string | null;
 }
 
 const statusConfig = {
@@ -81,8 +102,17 @@ const quickTemplates = [
   },
 ];
 
+// Reactivation timeout options (in minutes)
+const reactivationOptions = [
+  { value: '15', label: '15 minutos' },
+  { value: '30', label: '30 minutos' },
+  { value: '60', label: '1 hora' },
+  { value: '120', label: '2 horas' },
+  { value: 'manual', label: 'Manual' },
+];
+
 export default function Messages() {
-  const { tenantId } = useAuth();
+  const { tenantId, user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,11 +120,102 @@ export default function Messages() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [agentConversations, setAgentConversations] = useState<AgentConversation[]>([]);
+  const [togglingAgent, setTogglingAgent] = useState(false);
+  const [selectedReactivation, setSelectedReactivation] = useState('30');
+
+  // Load agent conversations status
+  const loadAgentConversations = useCallback(async () => {
+    if (!tenantId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('agent_conversations')
+        .select('id, patient_phone, agent_paused, agent_paused_at, agent_reactivate_at')
+        .eq('tenant_id', tenantId);
+      
+      if (error) throw error;
+      setAgentConversations(data || []);
+    } catch (error) {
+      console.error('Error loading agent conversations:', error);
+    }
+  }, [tenantId]);
+
+  // Toggle agent for a specific conversation
+  const toggleAgentForConversation = async (patientPhone: string, pause: boolean) => {
+    if (!tenantId || !user) return;
+    
+    setTogglingAgent(true);
+    try {
+      const existingConv = agentConversations.find(c => c.patient_phone === patientPhone);
+      
+      const reactivateAt = pause && selectedReactivation !== 'manual' 
+        ? addMinutes(new Date(), parseInt(selectedReactivation)).toISOString()
+        : null;
+      
+      if (existingConv) {
+        // Update existing conversation
+        const { error } = await supabase
+          .from('agent_conversations')
+          .update({
+            agent_paused: pause,
+            agent_paused_at: pause ? new Date().toISOString() : null,
+            agent_reactivate_at: reactivateAt,
+            paused_by_user_id: pause ? user.id : null,
+          })
+          .eq('id', existingConv.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new conversation record
+        const { error } = await supabase
+          .from('agent_conversations')
+          .insert({
+            tenant_id: tenantId,
+            patient_phone: patientPhone,
+            agent_paused: pause,
+            agent_paused_at: pause ? new Date().toISOString() : null,
+            agent_reactivate_at: reactivateAt,
+            paused_by_user_id: pause ? user.id : null,
+          });
+        
+        if (error) throw error;
+      }
+      
+      await loadAgentConversations();
+      
+      toast({
+        title: pause ? 'Agente pausado' : 'Agente reativado',
+        description: pause 
+          ? `Você assumiu a conversa${reactivateAt ? `. Reativação automática em ${selectedReactivation} minutos.` : ' (reativação manual).'}`
+          : 'O agente IA voltou a responder esta conversa.',
+      });
+    } catch (error) {
+      console.error('Error toggling agent:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível alterar o estado do agente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingAgent(false);
+    }
+  };
+
+  // Get agent status for a conversation
+  const getAgentStatus = (patientPhone: string) => {
+    const conv = agentConversations.find(c => c.patient_phone === patientPhone);
+    return {
+      isPaused: conv?.agent_paused || false,
+      reactivateAt: conv?.agent_reactivate_at,
+    };
+  };
 
   // Load messages and setup real-time subscription
   useEffect(() => {
     if (tenantId) {
       loadMessages();
+      loadAgentConversations();
       
       // Setup real-time subscription for new messages
       const channel = supabase
@@ -131,7 +252,7 @@ export default function Messages() {
         supabase.removeChannel(channel);
       };
     }
-  }, [tenantId]);
+  }, [tenantId, loadAgentConversations]);
 
   const loadMessages = async () => {
     try {
@@ -350,12 +471,47 @@ export default function Messages() {
                         {selectedConversation.patientName.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div>
-                      <CardTitle className="text-base">{selectedConversation.patientName}</CardTitle>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base truncate">{selectedConversation.patientName}</CardTitle>
                       <CardDescription className="text-xs">{selectedConversation.patientPhone}</CardDescription>
                     </div>
                   </div>
+                  
+                  {/* Mobile Agent Control Button */}
+                  {selectedConversation.patientPhone && (
+                    <Button
+                      variant={getAgentStatus(selectedConversation.patientPhone).isPaused ? "default" : "outline"}
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => toggleAgentForConversation(
+                        selectedConversation.patientPhone,
+                        !getAgentStatus(selectedConversation.patientPhone).isPaused
+                      )}
+                      disabled={togglingAgent}
+                    >
+                      {togglingAgent ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : getAgentStatus(selectedConversation.patientPhone).isPaused ? (
+                        <Play className="w-4 h-4" />
+                      ) : (
+                        <Pause className="w-4 h-4" />
+                      )}
+                    </Button>
+                  )}
                 </div>
+                
+                {/* Mobile Agent Status Banner */}
+                {selectedConversation.patientPhone && getAgentStatus(selectedConversation.patientPhone).isPaused && (
+                  <div className="mt-2 px-3 py-2 bg-amber-500/10 rounded-lg flex items-center gap-2">
+                    <User className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs text-amber-700">
+                      Você assumiu esta conversa
+                      {getAgentStatus(selectedConversation.patientPhone).reactivateAt && (
+                        <> • Reativa às {format(new Date(getAgentStatus(selectedConversation.patientPhone).reactivateAt!), 'HH:mm')}</>
+                      )}
+                    </span>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
                 <ScrollArea className="flex-1 p-4">
@@ -446,30 +602,44 @@ export default function Messages() {
                       Nenhuma conversa encontrada
                     </div>
                   ) : (
-                    filteredConversations.map((conv) => (
-                      <div
-                        key={conv.patientId}
-                        onClick={() => setSelectedPatientId(conv.patientId)}
-                        className="p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <span className="text-base font-medium text-primary">
-                              {conv.patientName.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <p className="font-medium truncate">{conv.patientName}</p>
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                    filteredConversations.map((conv) => {
+                      const agentStatus = conv.patientPhone ? getAgentStatus(conv.patientPhone) : { isPaused: false };
+                      return (
+                        <div
+                          key={conv.patientId}
+                          onClick={() => setSelectedPatientId(conv.patientId)}
+                          className="p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-12 h-12 rounded-full flex items-center justify-center shrink-0 relative",
+                              agentStatus.isPaused ? "bg-amber-500/10" : "bg-primary/10"
+                            )}>
+                              <span className={cn(
+                                "text-base font-medium",
+                                agentStatus.isPaused ? "text-amber-600" : "text-primary"
+                              )}>
+                                {conv.patientName.charAt(0).toUpperCase()}
                               </span>
+                              {agentStatus.isPaused && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
+                                  <User className="w-2.5 h-2.5 text-white" />
+                                </div>
+                              )}
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <p className="font-medium truncate">{conv.patientName}</p>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </ScrollArea>
               </CardContent>
@@ -500,36 +670,57 @@ export default function Messages() {
                     Nenhuma conversa encontrada
                   </div>
                 ) : (
-                  filteredConversations.map((conv) => (
-                    <div
-                      key={conv.patientId}
-                      onClick={() => setSelectedPatientId(conv.patientId)}
-                      className={cn(
-                        'p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50',
-                        selectedPatientId === conv.patientId && 'bg-muted/50'
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <span className="text-sm font-medium text-primary">
-                            {conv.patientName.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="font-medium truncate">{conv.patientName}</p>
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                  filteredConversations.map((conv) => {
+                    const agentStatus = conv.patientPhone ? getAgentStatus(conv.patientPhone) : { isPaused: false };
+                    return (
+                      <div
+                        key={conv.patientId}
+                        onClick={() => setSelectedPatientId(conv.patientId)}
+                        className={cn(
+                          'p-4 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50',
+                          selectedPatientId === conv.patientId && 'bg-muted/50'
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center shrink-0 relative",
+                            agentStatus.isPaused ? "bg-amber-500/10" : "bg-primary/10"
+                          )}>
+                            <span className={cn(
+                              "text-sm font-medium",
+                              agentStatus.isPaused ? "text-amber-600" : "text-primary"
+                            )}>
+                              {conv.patientName.charAt(0).toUpperCase()}
                             </span>
+                            {agentStatus.isPaused && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
+                                <User className="w-2 h-2 text-white" />
+                              </div>
+                            )}
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
-                          {conv.patientPhone && (
-                            <p className="text-xs text-muted-foreground">{conv.patientPhone}</p>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">{conv.patientName}</p>
+                                {agentStatus.isPaused && (
+                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                                    Humano
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(conv.lastMessageAt), 'HH:mm', { locale: ptBR })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                            {conv.patientPhone && (
+                              <p className="text-xs text-muted-foreground">{conv.patientPhone}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </ScrollArea>
             </CardContent>
@@ -539,16 +730,82 @@ export default function Messages() {
           <Card className="lg:col-span-2 flex flex-col overflow-hidden">
             <CardHeader className="pb-3 shrink-0 border-b">
               {selectedConversation ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-medium text-primary">
-                      {selectedConversation.patientName.charAt(0).toUpperCase()}
-                    </span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-medium text-primary">
+                        {selectedConversation.patientName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{selectedConversation.patientName}</CardTitle>
+                      <CardDescription>{selectedConversation.patientPhone}</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">{selectedConversation.patientName}</CardTitle>
-                    <CardDescription>{selectedConversation.patientPhone}</CardDescription>
-                  </div>
+                  
+                  {/* Agent Control */}
+                  {selectedConversation.patientPhone && (
+                    <div className="flex items-center gap-3">
+                      {(() => {
+                        const status = getAgentStatus(selectedConversation.patientPhone);
+                        return (
+                          <>
+                            {status.isPaused ? (
+                              <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                                <User className="w-3 h-3" />
+                                Humano
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="gap-1 bg-primary/10 text-primary border-primary/30">
+                                <Bot className="w-3 h-3" />
+                                IA Ativa
+                              </Badge>
+                            )}
+                            
+                            {!status.isPaused && (
+                              <Select value={selectedReactivation} onValueChange={setSelectedReactivation}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs">
+                                  <SelectValue placeholder="Reativação" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {reactivationOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            
+                            <Button
+                              variant={status.isPaused ? "default" : "outline"}
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => toggleAgentForConversation(
+                                selectedConversation.patientPhone,
+                                !status.isPaused
+                              )}
+                              disabled={togglingAgent}
+                            >
+                              {togglingAgent ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : status.isPaused ? (
+                                <>
+                                  <Play className="w-3.5 h-3.5" />
+                                  Reativar IA
+                                </>
+                              ) : (
+                                <>
+                                  <Pause className="w-3.5 h-3.5" />
+                                  Assumir
+                                </>
+                              )}
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <CardTitle className="text-lg text-muted-foreground">Selecione uma conversa</CardTitle>
