@@ -11,6 +11,8 @@ import {
   UsersRound,
   BarChart3,
   Megaphone,
+  Target,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,18 @@ const navItems = [
     label: 'Mensagens',
     href: '/messages',
     icon: MessageSquare,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'CRM',
+    href: '/crm',
+    icon: Target,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Histórico Takeover',
+    href: '/takeover-history',
+    icon: History,
     roles: ['admin', 'staff'],
   },
   {
