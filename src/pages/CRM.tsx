@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,23 +18,28 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Search,
   Users,
-  UserPlus,
-  Filter,
   RefreshCw,
   Loader2,
   Phone,
   Mail,
-  Calendar,
   Star,
-  TrendingUp,
-  DollarSign,
   Activity,
+  DollarSign,
   ArrowRight,
+  Download,
+  FileSpreadsheet,
+  FileJson,
+  GripVertical,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,6 +48,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { PatientCRMPanel } from '@/components/crm/PatientCRMPanel';
+import { exportToCSV, exportToJSON } from '@/lib/export';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Patient {
   id: string;
@@ -77,6 +95,156 @@ const pipelineStages = [
   { value: 'loyal', label: 'Fidelizado', icon: '⭐', color: 'bg-yellow-500' },
 ];
 
+// CRM Export columns
+const crmExportColumns = [
+  { header: 'Nome', accessor: 'name' as const },
+  { header: 'WhatsApp', accessor: 'whatsapp' as const },
+  { header: 'Email', accessor: 'email' as const },
+  { header: 'Status', accessor: (p: Patient) => {
+    const opt = statusOptions.find(s => s.value === (p.status || 'active'));
+    return opt?.label || p.status || 'Ativo';
+  }},
+  { header: 'Pipeline', accessor: (p: Patient) => {
+    const stage = pipelineStages.find(s => s.value === (p.pipeline_stage || 'new'));
+    return stage?.label || p.pipeline_stage || 'Novo';
+  }},
+  { header: 'Prioridade', accessor: (p: Patient) => {
+    return p.priority === 2 ? 'Urgente' : p.priority === 1 ? 'Alta' : 'Normal';
+  }},
+  { header: 'Tags', accessor: (p: Patient) => (p.tags || []).join(', ') },
+  { header: 'Consultas', accessor: 'total_appointments' as const },
+  { header: 'Receita', accessor: (p: Patient) => `R$ ${(p.total_revenue || 0).toLocaleString('pt-BR')}` },
+  { header: 'Última Interação', accessor: (p: Patient) => 
+    p.last_interaction_at ? format(new Date(p.last_interaction_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : ''
+  },
+  { header: 'Criado em', accessor: (p: Patient) => 
+    p.created_at ? format(new Date(p.created_at), 'dd/MM/yyyy', { locale: ptBR }) : ''
+  },
+];
+
+// Draggable Patient Card Component
+function DraggablePatientCard({ 
+  patient, 
+  onClick 
+}: { 
+  patient: Patient; 
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: patient.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <Card 
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "p-3 cursor-pointer hover:shadow-md transition-all",
+        isDragging && "opacity-50 shadow-lg ring-2 ring-primary"
+      )}
+      onClick={onClick}
+    >
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div 
+            {...attributes} 
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <p className="font-medium text-sm truncate flex-1">{patient.name}</p>
+        </div>
+        <p className="text-xs text-muted-foreground truncate pl-6">{patient.whatsapp}</p>
+        <div className="flex items-center justify-between pl-6">
+          {patient.priority === 2 ? (
+            <Badge variant="destructive" className="text-[10px]">Urgente</Badge>
+          ) : patient.priority === 1 ? (
+            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">Alta</Badge>
+          ) : (
+            <span />
+          )}
+          {patient.status === 'vip' && (
+            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Drag overlay card (shown while dragging)
+function DragOverlayCard({ patient }: { patient: Patient }) {
+  return (
+    <Card className="p-3 shadow-xl ring-2 ring-primary bg-background">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <GripVertical className="w-4 h-4 text-primary" />
+          <p className="font-medium text-sm truncate flex-1">{patient.name}</p>
+        </div>
+        <p className="text-xs text-muted-foreground truncate pl-6">{patient.whatsapp}</p>
+      </div>
+    </Card>
+  );
+}
+
+// Droppable Stage Column
+function DroppableStageColumn({ 
+  stage, 
+  patients, 
+  onPatientClick 
+}: { 
+  stage: typeof pipelineStages[0];
+  patients: Patient[];
+  onPatientClick: (patient: Patient) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{stage.icon}</span>
+          <span className="font-medium text-sm">{stage.label}</span>
+        </div>
+        <Badge variant="secondary" className="text-xs">
+          {patients.length}
+        </Badge>
+      </div>
+      <div 
+        className="min-h-[400px] bg-muted/30 rounded-lg p-2"
+        data-stage={stage.value}
+      >
+        <ScrollArea className="h-[380px]">
+          <div className="space-y-2 pr-2">
+            {patients.map(patient => (
+              <DraggablePatientCard
+                key={patient.id}
+                patient={patient}
+                onClick={() => onPatientClick(patient)}
+              />
+            ))}
+            {patients.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-8">
+                Arraste pacientes aqui
+              </p>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
 export default function CRM() {
   const { tenantId } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -87,6 +255,16 @@ export default function CRM() {
   const [pipelineFilter, setPipelineFilter] = useState('all');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [activePatient, setActivePatient] = useState<Patient | null>(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const loadPatients = useCallback(async () => {
     if (!tenantId) return;
@@ -132,6 +310,89 @@ export default function CRM() {
     loadPatients();
   };
 
+  // Handle drag start
+  const handleDragStart = (event: DragStartEvent) => {
+    const patient = patients.find(p => p.id === event.active.id);
+    setActivePatient(patient || null);
+  };
+
+  // Handle drag end - update patient pipeline stage
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActivePatient(null);
+    
+    const { active, over } = event;
+    
+    if (!over) return;
+    
+    const patientId = active.id as string;
+    const patient = patients.find(p => p.id === patientId);
+    
+    if (!patient) return;
+
+    // Find the target stage from the over element
+    // The over could be another patient card or the column itself
+    let targetStage: string | null = null;
+    
+    // Check if dropped over another patient
+    const overPatient = patients.find(p => p.id === over.id);
+    if (overPatient) {
+      targetStage = overPatient.pipeline_stage || 'new';
+    } else {
+      // Dropped on a column - check data attribute
+      const overElement = document.querySelector(`[data-stage]`);
+      if (overElement) {
+        targetStage = overElement.getAttribute('data-stage');
+      }
+    }
+
+    // Find stage from over.id if it matches a stage value
+    const stageMatch = pipelineStages.find(s => s.value === over.id);
+    if (stageMatch) {
+      targetStage = stageMatch.value;
+    }
+
+    // If we still don't have a target, try to find it from any patient in that column
+    if (!targetStage && overPatient) {
+      targetStage = overPatient.pipeline_stage || 'new';
+    }
+
+    // If no change needed
+    if (!targetStage || targetStage === (patient.pipeline_stage || 'new')) {
+      return;
+    }
+
+    // Optimistically update UI
+    setPatients(prev => prev.map(p => 
+      p.id === patientId ? { ...p, pipeline_stage: targetStage! } : p
+    ));
+
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .update({ pipeline_stage: targetStage })
+        .eq('id', patientId);
+
+      if (error) throw error;
+
+      const stageName = pipelineStages.find(s => s.value === targetStage)?.label;
+      toast({
+        title: 'Pipeline atualizado',
+        description: `${patient.name} movido para "${stageName}"`,
+      });
+    } catch (error) {
+      console.error('Error updating pipeline stage:', error);
+      // Revert optimistic update
+      setPatients(prev => prev.map(p => 
+        p.id === patientId ? { ...p, pipeline_stage: patient.pipeline_stage } : p
+      ));
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o pipeline.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const filteredPatients = patients.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -158,6 +419,19 @@ export default function CRM() {
     setSheetOpen(true);
   };
 
+  // Export functions
+  const handleExportCSV = () => {
+    const filename = `crm-pacientes-${format(new Date(), 'yyyy-MM-dd')}`;
+    exportToCSV(filteredPatients, crmExportColumns, filename);
+    toast({ title: 'Exportação concluída', description: `${filteredPatients.length} pacientes exportados para CSV.` });
+  };
+
+  const handleExportJSON = () => {
+    const filename = `crm-pacientes-${format(new Date(), 'yyyy-MM-dd')}`;
+    exportToJSON(filteredPatients, filename);
+    toast({ title: 'Exportação concluída', description: `${filteredPatients.length} pacientes exportados para JSON.` });
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -172,20 +446,40 @@ export default function CRM() {
     <DashboardLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold">CRM de Pacientes</h1>
             <p className="text-muted-foreground mt-1">Gerencie relacionamentos e pipeline de vendas</p>
           </div>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV} className="gap-2">
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Exportar CSV (Excel)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportJSON} className="gap-2">
+                  <FileJson className="w-4 h-4" />
+                  Exportar JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -287,56 +581,29 @@ export default function CRM() {
             <TabsTrigger value="list">Lista</TabsTrigger>
           </TabsList>
 
-          {/* Kanban View */}
+          {/* Kanban View with Drag & Drop */}
           <TabsContent value="kanban" className="mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {pipelineStages.map(stage => (
-                <div key={stage.value} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{stage.icon}</span>
-                      <span className="font-medium text-sm">{stage.label}</span>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {patientsByStage[stage.value]?.length || 0}
-                    </Badge>
-                  </div>
-                  <ScrollArea className="h-[400px]">
-                    <div className="space-y-2 pr-2">
-                      {patientsByStage[stage.value]?.map(patient => (
-                        <Card 
-                          key={patient.id} 
-                          className="p-3 cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => openPatientDetail(patient)}
-                        >
-                          <div className="space-y-2">
-                            <p className="font-medium text-sm truncate">{patient.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{patient.whatsapp}</p>
-                            <div className="flex items-center justify-between">
-                              {patient.priority === 2 ? (
-                                <Badge variant="destructive" className="text-[10px]">Urgente</Badge>
-                              ) : patient.priority === 1 ? (
-                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">Alta</Badge>
-                              ) : (
-                                <span />
-                              )}
-                              {patient.status === 'vip' && (
-                                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                              )}
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                      {(!patientsByStage[stage.value] || patientsByStage[stage.value].length === 0) && (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          Nenhum paciente
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {pipelineStages.map(stage => (
+                  <DroppableStageColumn
+                    key={stage.value}
+                    stage={stage}
+                    patients={patientsByStage[stage.value] || []}
+                    onPatientClick={openPatientDetail}
+                  />
+                ))}
+              </div>
+              
+              <DragOverlay>
+                {activePatient && <DragOverlayCard patient={activePatient} />}
+              </DragOverlay>
+            </DndContext>
           </TabsContent>
 
           {/* List View */}
