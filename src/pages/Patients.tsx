@@ -46,13 +46,14 @@ import {
   Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import PatientHistorySheet from '@/components/patients/PatientHistorySheet';
 import { exportToCSV, patientExportColumns } from '@/lib/export';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 
 interface Patient {
   id: string;
@@ -81,6 +82,7 @@ export default function Patients() {
   const [saving, setSaving] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
 
   useEffect(() => {
     if (tenantId) {
@@ -186,12 +188,27 @@ export default function Patients() {
     }
   };
 
-  const filteredPatients = patients.filter(
-    (p) =>
+  const filteredPatients = patients
+    .filter((p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.whatsapp.includes(searchQuery) ||
       (p.email && p.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+    )
+    .filter((p) => {
+      if (!dateRange.from && !dateRange.to) return true;
+      const patientDate = new Date(p.created_at);
+      const from = dateRange.from ? startOfDay(dateRange.from) : null;
+      const to = dateRange.to ? endOfDay(dateRange.to) : null;
+      
+      if (from && to) {
+        return isWithinInterval(patientDate, { start: from, end: to });
+      } else if (from) {
+        return patientDate >= from;
+      } else if (to) {
+        return patientDate <= to;
+      }
+      return true;
+    });
 
   if (loading) {
     return (
@@ -214,7 +231,8 @@ export default function Patients() {
               Gerencie sua base de pacientes
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
             <Button
               variant="outline"
               className="gap-2"

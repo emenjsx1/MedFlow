@@ -10,7 +10,28 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
 import { CurrencySelector } from "@/components/CurrencySelector";
-const allFeatures = ["Agendamentos ilimitados", "WhatsApp integrado", "Lembretes automáticos (1h e 10min antes)", "Suporte 24/7 automatizado via IA", "Fila de espera inteligente", "Relatórios e métricas", "Gestão de pacientes", "Integrações com Google Calendar", "Suporte prioritário via WhatsApp", "Atualizações gratuitas", "Acesso Mobile e Desktop"];
+const allFeatures = [
+  "Agendamentos ilimitados",
+  "WhatsApp integrado com QR Code",
+  "Lembretes automáticos (1h e 10min antes)",
+  "Atendimento 24/7 automatizado via IA",
+  "Fila de espera inteligente",
+  "Relatórios e métricas detalhadas",
+  "Gestão completa de pacientes",
+  "Sincronização com Google Calendar",
+  "CRM com pipeline drag & drop",
+  "Campanhas de marketing em massa",
+  "Automação de follow-up",
+  "Check-in digital com QR Code",
+  "Múltiplos profissionais/agendas",
+  "Exportação de dados (CSV/Excel)",
+  "Histórico completo de atendimentos",
+  "Backup automático de dados",
+  "Takeover humano da IA",
+  "Suporte prioritário via WhatsApp",
+  "Atualizações gratuitas",
+  "Acesso Mobile e Desktop",
+];
 const plans = [{
   id: "monthly",
   name: "Mensal",

@@ -45,7 +45,7 @@ import {
   History,
   UserCircle,
 } from 'lucide-react';
-import { format, addMinutes, differenceInMinutes } from 'date-fns';
+import { format, addMinutes, differenceInMinutes, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +54,7 @@ import { toast } from '@/hooks/use-toast';
 import { TakeoverHistoryPanel } from '@/components/takeover/TakeoverHistoryPanel';
 import { PatientCRMPanel } from '@/components/crm/PatientCRMPanel';
 import { useTakeoverAlerts } from '@/hooks/useTakeoverAlerts';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 
 interface Message {
   id: string;
@@ -136,6 +137,7 @@ export default function Messages() {
   const [togglingAgent, setTogglingAgent] = useState(false);
   const [selectedReactivation, setSelectedReactivation] = useState('30');
   const [activeTab, setActiveTab] = useState('conversations');
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
 
   // Initialize takeover alerts
   useTakeoverAlerts({ soundEnabled: true, browserNotificationEnabled: true });
@@ -384,8 +386,26 @@ export default function Messages() {
     }
   };
 
+  // Filter messages by date range first
+  const dateFilteredMessages = dateRange.from || dateRange.to
+    ? messages.filter((msg) => {
+        const msgDate = new Date(msg.sent_at);
+        const from = dateRange.from ? startOfDay(dateRange.from) : null;
+        const to = dateRange.to ? endOfDay(dateRange.to) : null;
+        
+        if (from && to) {
+          return isWithinInterval(msgDate, { start: from, end: to });
+        } else if (from) {
+          return msgDate >= from;
+        } else if (to) {
+          return msgDate <= to;
+        }
+        return true;
+      })
+    : messages;
+
   // Group messages by patient
-  const conversations = messages.reduce((acc, msg) => {
+  const conversations = dateFilteredMessages.reduce((acc, msg) => {
     const patientKey = msg.patient_id || 'unknown';
     const existing = acc.find((c) => c.patientId === patientKey);
     if (existing) {
@@ -438,6 +458,7 @@ export default function Messages() {
             <h1 className="text-3xl font-bold">Mensagens</h1>
             <p className="text-muted-foreground mt-1">Histórico de mensagens enviadas e recebidas</p>
           </div>
+          <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
           <Button
             variant="outline"
             className="gap-2"

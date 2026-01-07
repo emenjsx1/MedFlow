@@ -31,38 +31,42 @@ import {
   Bot,
   MessageSquare,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, subMonths, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 
 const COLORS = ['hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', 'hsl(var(--muted))'];
 
 export default function Reports() {
   const { tenantId } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('30');
+  const [period, setPeriod] = useState('custom');
   const [appointments, setAppointments] = useState<any[]>([]);
   const [agentConversations, setAgentConversations] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: subMonths(new Date(), 1), to: new Date() });
   const [professionals, setProfessionals] = useState<any[]>([]);
 
   useEffect(() => {
     if (tenantId) {
       loadData();
     }
-  }, [tenantId, period]);
+  }, [tenantId, dateRange]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const startDate = subMonths(new Date(), parseInt(period) / 30);
+      const startDate = dateRange.from || subMonths(new Date(), 1);
+      const endDate = dateRange.to || new Date();
       
       // Load appointments
       const { data: appointmentsData } = await supabase
         .from('appointments')
         .select('*')
         .eq('tenant_id', tenantId)
-        .gte('scheduled_at', startDate.toISOString())
+        .gte('scheduled_at', startOfDay(startDate).toISOString())
+        .lte('scheduled_at', endOfDay(endDate).toISOString())
         .order('scheduled_at', { ascending: true });
 
       setAppointments(appointmentsData || []);
@@ -72,7 +76,8 @@ export default function Reports() {
         .from('agent_conversations')
         .select('*')
         .eq('tenant_id', tenantId)
-        .gte('started_at', startDate.toISOString())
+        .gte('started_at', startOfDay(startDate).toISOString())
+        .lte('started_at', endOfDay(endDate).toISOString())
         .order('started_at', { ascending: true });
 
       setAgentConversations(conversationsData || []);
@@ -202,16 +207,7 @@ export default function Reports() {
               Métricas e análises de performance
             </p>
           </div>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="30">Últimos 30 dias</SelectItem>
-              <SelectItem value="60">Últimos 60 dias</SelectItem>
-              <SelectItem value="90">Últimos 90 dias</SelectItem>
-            </SelectContent>
-          </Select>
+          <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
 
         {/* Main Stats */}

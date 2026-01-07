@@ -12,55 +12,67 @@ import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } fro
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// Export DateRange type for use in other components
+export interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
 interface DateRangeFilterProps {
-  startDate: string | null;
-  endDate: string | null;
-  onStartDateChange: (date: string | null) => void;
-  onEndDateChange: (date: string | null) => void;
+  dateRange: DateRange;
+  onDateRangeChange: (range: DateRange) => void;
   className?: string;
 }
 
 const presets = [
-  { label: 'Hoje', getValue: () => ({ start: new Date(), end: new Date() }) },
-  { label: 'Últimos 7 dias', getValue: () => ({ start: subDays(new Date(), 7), end: new Date() }) },
-  { label: 'Últimos 30 dias', getValue: () => ({ start: subDays(new Date(), 30), end: new Date() }) },
-  { label: 'Este mês', getValue: () => ({ start: startOfMonth(new Date()), end: endOfMonth(new Date()) }) },
-  { label: 'Esta semana', getValue: () => ({ start: startOfWeek(new Date(), { locale: ptBR }), end: endOfWeek(new Date(), { locale: ptBR }) }) },
+  { label: 'Hoje', getValue: () => ({ from: new Date(), to: new Date() }) },
+  { label: 'Últimos 7 dias', getValue: () => ({ from: subDays(new Date(), 7), to: new Date() }) },
+  { label: 'Últimos 30 dias', getValue: () => ({ from: subDays(new Date(), 30), to: new Date() }) },
+  { label: 'Este mês', getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
+  { label: 'Esta semana', getValue: () => ({ from: startOfWeek(new Date(), { locale: ptBR }), to: endOfWeek(new Date(), { locale: ptBR }) }) },
 ];
 
 export function DateRangeFilter({
-  startDate,
-  endDate,
-  onStartDateChange,
-  onEndDateChange,
+  dateRange,
+  onDateRangeChange,
   className,
 }: DateRangeFilterProps) {
   const [open, setOpen] = useState(false);
 
-  const hasFilter = startDate || endDate;
+  const hasFilter = dateRange.from || dateRange.to;
 
   const handlePreset = (preset: typeof presets[0]) => {
-    const { start, end } = preset.getValue();
-    onStartDateChange(format(start, 'yyyy-MM-dd'));
-    onEndDateChange(format(end, 'yyyy-MM-dd'));
+    const range = preset.getValue();
+    onDateRangeChange(range);
     setOpen(false);
   };
 
   const handleClear = () => {
-    onStartDateChange(null);
-    onEndDateChange(null);
+    onDateRangeChange({ from: undefined, to: undefined });
+  };
+
+  const handleStartDateChange = (value: string) => {
+    const date = value ? new Date(value + 'T00:00:00') : undefined;
+    onDateRangeChange({ ...dateRange, from: date });
+  };
+
+  const handleEndDateChange = (value: string) => {
+    const date = value ? new Date(value + 'T00:00:00') : undefined;
+    onDateRangeChange({ ...dateRange, to: date });
   };
 
   const getDisplayText = () => {
-    if (!startDate && !endDate) return 'Filtrar por data';
-    if (startDate && endDate) {
-      if (startDate === endDate) {
-        return format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+    if (!dateRange.from && !dateRange.to) return 'Filtrar por data';
+    if (dateRange.from && dateRange.to) {
+      const fromStr = format(dateRange.from, 'yyyy-MM-dd');
+      const toStr = format(dateRange.to, 'yyyy-MM-dd');
+      if (fromStr === toStr) {
+        return format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR });
       }
-      return `${format(new Date(startDate + 'T00:00:00'), 'dd/MM', { locale: ptBR })} - ${format(new Date(endDate + 'T00:00:00'), 'dd/MM', { locale: ptBR })}`;
+      return `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${format(dateRange.to, 'dd/MM', { locale: ptBR })}`;
     }
-    if (startDate) return `A partir de ${format(new Date(startDate + 'T00:00:00'), 'dd/MM', { locale: ptBR })}`;
-    return `Até ${format(new Date(endDate + 'T00:00:00'), 'dd/MM', { locale: ptBR })}`;
+    if (dateRange.from) return `A partir de ${format(dateRange.from, 'dd/MM', { locale: ptBR })}`;
+    return `Até ${format(dateRange.to!, 'dd/MM', { locale: ptBR })}`;
   };
 
   return (
@@ -112,8 +124,8 @@ export function DateRangeFilter({
               <Input
                 id="startDate"
                 type="date"
-                value={startDate || ''}
-                onChange={(e) => onStartDateChange(e.target.value || null)}
+                value={dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}
+                onChange={(e) => handleStartDateChange(e.target.value)}
                 className="h-9"
               />
             </div>
@@ -122,8 +134,8 @@ export function DateRangeFilter({
               <Input
                 id="endDate"
                 type="date"
-                value={endDate || ''}
-                onChange={(e) => onEndDateChange(e.target.value || null)}
+                value={dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : ''}
+                onChange={(e) => handleEndDateChange(e.target.value)}
                 className="h-9"
               />
             </div>
