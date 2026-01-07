@@ -49,7 +49,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { PatientCRMPanel } from '@/components/crm/PatientCRMPanel';
 import { exportToCSV, exportToJSON } from '@/lib/export';
-import { DateRangeFilter } from '@/components/filters/DateRangeFilter';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 import {
   DndContext,
   DragEndEvent,
@@ -252,8 +252,7 @@ export default function CRM() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [pipelineFilter, setPipelineFilter] = useState('all');
-  const [dateStartFilter, setDateStartFilter] = useState<string | null>(null);
-  const [dateEndFilter, setDateEndFilter] = useState<string | null>(null);
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRange>({ from: undefined, to: undefined });
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
@@ -403,18 +402,18 @@ export default function CRM() {
     
     // Date filter
     let matchesDate = true;
-    if (dateStartFilter || dateEndFilter) {
+    if (dateRangeFilter.from || dateRangeFilter.to) {
       const patientDate = p.created_at ? new Date(p.created_at) : null;
       if (patientDate) {
-        if (dateStartFilter && dateEndFilter) {
+        if (dateRangeFilter.from && dateRangeFilter.to) {
           matchesDate = isWithinInterval(patientDate, {
-            start: startOfDay(parseISO(dateStartFilter)),
-            end: endOfDay(parseISO(dateEndFilter)),
+            start: startOfDay(dateRangeFilter.from),
+            end: endOfDay(dateRangeFilter.to),
           });
-        } else if (dateStartFilter) {
-          matchesDate = patientDate >= startOfDay(parseISO(dateStartFilter));
-        } else if (dateEndFilter) {
-          matchesDate = patientDate <= endOfDay(parseISO(dateEndFilter));
+        } else if (dateRangeFilter.from) {
+          matchesDate = patientDate >= startOfDay(dateRangeFilter.from);
+        } else if (dateRangeFilter.to) {
+          matchesDate = patientDate <= endOfDay(dateRangeFilter.to);
         }
       } else {
         matchesDate = false;
@@ -596,10 +595,8 @@ export default function CRM() {
                 </SelectContent>
               </Select>
               <DateRangeFilter
-                startDate={dateStartFilter}
-                endDate={dateEndFilter}
-                onStartDateChange={setDateStartFilter}
-                onEndDateChange={setDateEndFilter}
+                dateRange={dateRangeFilter}
+                onDateRangeChange={setDateRangeFilter}
                 className="w-full sm:w-auto"
               />
             </div>

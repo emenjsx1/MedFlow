@@ -44,11 +44,12 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 
 interface WaitlistEntry {
   id: string;
@@ -88,6 +89,42 @@ export default function Waitlist() {
   const [newPreferredTimeEnd, setNewPreferredTimeEnd] = useState('');
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('waitlist');
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+
+  // Filter data by date range
+  const filteredWaitlist = dateRange.from || dateRange.to
+    ? waitlist.filter((entry) => {
+        const entryDate = new Date(entry.created_at);
+        const from = dateRange.from ? startOfDay(dateRange.from) : null;
+        const to = dateRange.to ? endOfDay(dateRange.to) : null;
+        
+        if (from && to) {
+          return isWithinInterval(entryDate, { start: from, end: to });
+        } else if (from) {
+          return entryDate >= from;
+        } else if (to) {
+          return entryDate <= to;
+        }
+        return true;
+      })
+    : waitlist;
+
+  const filteredReplacements = dateRange.from || dateRange.to
+    ? replacements.filter((slot) => {
+        const slotDate = new Date(slot.scheduled_at);
+        const from = dateRange.from ? startOfDay(dateRange.from) : null;
+        const to = dateRange.to ? endOfDay(dateRange.to) : null;
+        
+        if (from && to) {
+          return isWithinInterval(slotDate, { start: from, end: to });
+        } else if (from) {
+          return slotDate >= from;
+        } else if (to) {
+          return slotDate <= to;
+        }
+        return true;
+      })
+    : replacements;
 
   useEffect(() => {
     if (tenantId) {
@@ -277,7 +314,8 @@ export default function Waitlist() {
               Gerencie pacientes aguardando e vagas disponíveis
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
             <Button
               variant="outline"
               className="gap-2"
@@ -443,14 +481,14 @@ export default function Waitlist() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {waitlist.length === 0 ? (
+                      {filteredWaitlist.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                            Nenhum paciente na fila de espera.
+                            {waitlist.length > 0 ? 'Nenhum paciente encontrado no período.' : 'Nenhum paciente na fila de espera.'}
                           </TableCell>
                         </TableRow>
                       ) : (
-                        waitlist.map((entry) => (
+                        filteredWaitlist.map((entry) => (
                           <TableRow key={entry.id}>
                             <TableCell>
                               <span className="font-mono text-sm text-muted-foreground">

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -126,6 +127,7 @@ export default function Campaigns() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
 
   // Fetch campaigns
   const { data: campaigns, isLoading: campaignsLoading } = useQuery({
@@ -141,6 +143,23 @@ export default function Campaigns() {
     },
     enabled: !!tenantId,
   });
+
+  // Filter campaigns by date range
+  const filteredCampaigns = campaigns?.filter((campaign) => {
+    if (!dateRange.from && !dateRange.to) return true;
+    const campaignDate = new Date(campaign.created_at);
+    const from = dateRange.from ? startOfDay(dateRange.from) : null;
+    const to = dateRange.to ? endOfDay(dateRange.to) : null;
+    
+    if (from && to) {
+      return isWithinInterval(campaignDate, { start: from, end: to });
+    } else if (from) {
+      return campaignDate >= from;
+    } else if (to) {
+      return campaignDate <= to;
+    }
+    return true;
+  }) || [];
 
   // Fetch campaign recipients when a campaign is selected
   const { data: recipients, isLoading: recipientsLoading } = useQuery({
@@ -342,21 +361,23 @@ export default function Campaigns() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Campanhas</h1>
             <p className="text-muted-foreground">
               Envie mensagens em massa para seus pacientes
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Campanha
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex gap-2 flex-wrap">
+            <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Campanha
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Criar Nova Campanha</DialogTitle>
               </DialogHeader>
@@ -541,6 +562,7 @@ export default function Campaigns() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Stats Cards */}
