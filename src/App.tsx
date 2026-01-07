@@ -25,6 +25,8 @@ import Checkin from "./pages/Checkin";
 import MarketingGallery from "./pages/MarketingGallery";
 import CRM from "./pages/CRM";
 import TakeoverHistory from "./pages/TakeoverHistory";
+import SuperAdmin from "./pages/SuperAdmin";
+import Register from "./pages/Register";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/settings" element={<Settings />} />
@@ -54,6 +57,7 @@ const App = () => (
               <Route path="/crm" element={<CRM />} />
               <Route path="/takeover-history" element={<TakeoverHistory />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/super-admin" element={<SuperAdmin />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="*" element={<NotFound />} />

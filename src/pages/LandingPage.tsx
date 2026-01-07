@@ -462,10 +462,13 @@ export default function LandingPage() {
               <VturbPlayer />
             </div>
 
-            <div className="flex justify-center mt-4 sm:mt-6">
-              <Button size="lg" className="gap-2 text-sm sm:text-base px-4 sm:px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full sm:w-auto" onClick={scrollToPricing}>
-                Quero começar agora
+            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4 sm:mt-6">
+              <Button size="lg" className="gap-2 text-sm sm:text-base px-4 sm:px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" onClick={scrollToPricing}>
+                Ver Planos
                 <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button size="lg" variant="outline" className="gap-2 text-sm sm:text-base px-4 sm:px-8 font-semibold" onClick={() => navigate('/register')}>
+                Teste Grátis 3 Dias
               </Button>
             </div>
           </div>

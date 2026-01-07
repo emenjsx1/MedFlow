@@ -295,6 +295,42 @@ export type Database = {
           },
         ]
       }
+      global_settings: {
+        Row: {
+          created_at: string | null
+          evolution_api_key: string | null
+          evolution_api_url: string | null
+          google_client_id: string | null
+          google_client_secret: string | null
+          id: string
+          lovable_api_key: string | null
+          resend_api_key: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          google_client_id?: string | null
+          google_client_secret?: string | null
+          id?: string
+          lovable_api_key?: string | null
+          resend_api_key?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          google_client_id?: string | null
+          google_client_secret?: string | null
+          id?: string
+          lovable_api_key?: string | null
+          resend_api_key?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           appointment_id: string | null
@@ -791,24 +827,45 @@ export type Database = {
       }
       tenants: {
         Row: {
+          blocked_at: string | null
+          blocked_reason: string | null
           created_at: string | null
           id: string
           name: string
+          subscription_ends_at: string | null
+          subscription_started_at: string | null
+          subscription_status: string | null
           timezone: string | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
           updated_at: string | null
         }
         Insert: {
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string | null
           id?: string
           name: string
+          subscription_ends_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           timezone?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string | null
           id?: string
           name?: string
+          subscription_ends_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           timezone?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -944,9 +1001,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_valid_subscription: { Args: { _tenant_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_trial_expired: { Args: { _tenant_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "staff"
+      app_role: "admin" | "staff" | "super_admin"
       appointment_status:
         | "pending"
         | "confirmed"
@@ -1086,7 +1146,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff"],
+      app_role: ["admin", "staff", "super_admin"],
       appointment_status: [
         "pending",
         "confirmed",

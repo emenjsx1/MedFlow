@@ -6,6 +6,7 @@ import BottomNav from './BottomNav';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { TrialExpiredModal } from '@/components/TrialExpiredModal';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -13,7 +14,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, requireAdmin = false }: DashboardLayoutProps) {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, isSuperAdmin, isTrialExpired } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -27,7 +28,6 @@ export default function DashboardLayout({ children, requireAdmin = false }: Dash
     }
   }, [user, loading, navigate, requireAdmin, isAdmin]);
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
@@ -53,6 +53,9 @@ export default function DashboardLayout({ children, requireAdmin = false }: Dash
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Trial Expired Modal - only show if not super admin */}
+      {!isSuperAdmin && <TrialExpiredModal open={isTrialExpired} />}
+
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-background border-b border-border z-40 flex items-center justify-between px-4">
         <Logo size="md" />
