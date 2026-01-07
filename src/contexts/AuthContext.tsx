@@ -2,7 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type UserRole = 'admin' | 'staff';
+type UserRole = 'admin' | 'staff' | 'super_admin';
+
+interface TenantSubscription {
+  subscriptionStatus: string | null;
+  trialEndsAt: string | null;
+  subscriptionEndsAt: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +20,10 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  subscription: TenantSubscription | null;
+  isTrialExpired: boolean;
+  hasValidSubscription: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,9 +34,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
+
+  const isTrialExpired = subscription?.subscriptionStatus === 'trial' && 
+    subscription?.trialEndsAt && new Date(subscription.trialEndsAt) < new Date();
+  
+  const hasValidSubscription = 
+    (subscription?.subscriptionStatus === 'trial' && subscription?.trialEndsAt && new Date(subscription.trialEndsAt) > new Date()) ||
+    (subscription?.subscriptionStatus === 'active' && (!subscription?.subscriptionEndsAt || new Date(subscription.subscriptionEndsAt) > new Date()));
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -38,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setRole(null);
           setTenantId(null);
+          setSubscription(null);
           setLoading(false);
         }
       }
@@ -53,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => authSubscription.unsubscribe();
   }, []);
 
   const fetchUserData = async (userId: string) => {
@@ -79,8 +98,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
       
-      if (!profileError && profileData) {
+      if (!profileError && profileData && profileData.tenant_id) {
         setTenantId(profileData.tenant_id);
+        
+        // Fetch tenant subscription status
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('subscription_status, trial_ends_at, subscription_ends_at')
+          .eq('id', profileData.tenant_id)
+          .maybeSingle();
+        
+        if (tenantData) {
+          setSubscription({
+            subscriptionStatus: tenantData.subscription_status,
+            trialEndsAt: tenantData.trial_ends_at,
+            subscriptionEndsAt: tenantData.subscription_ends_at,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -112,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setRole(null);
     setTenantId(null);
+    setSubscription(null);
   };
 
   return (
@@ -125,7 +160,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
-        isAdmin: role === 'admin',
+        isAdmin: role === 'admin' || role === 'super_admin',
+        isSuperAdmin: role === 'super_admin',
+        subscription,
+        isTrialExpired: isTrialExpired || false,
+        hasValidSubscription: hasValidSubscription || false,
       }}
     >
       {children}
