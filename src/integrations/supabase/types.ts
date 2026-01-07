@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          tenant_id: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          tenant_id?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          tenant_id?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_conversations: {
         Row: {
           agent_paused: boolean | null
@@ -593,6 +640,69 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          max_appointments_month: number | null
+          max_patients: number | null
+          max_professionals: number | null
+          name: string
+          price_monthly: number
+          price_yearly: number | null
+          slug: string
+          sort_order: number | null
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          max_appointments_month?: number | null
+          max_patients?: number | null
+          max_professionals?: number | null
+          name: string
+          price_monthly?: number
+          price_yearly?: number | null
+          slug: string
+          sort_order?: number | null
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          max_appointments_month?: number | null
+          max_patients?: number | null
+          max_professionals?: number | null
+          name?: string
+          price_monthly?: number
+          price_yearly?: number | null
+          slug?: string
+          sort_order?: number | null
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       takeover_history: {
         Row: {
           created_at: string | null
@@ -832,6 +942,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          plan_id: string | null
           subscription_ends_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
@@ -846,6 +957,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          plan_id?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -860,6 +972,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          plan_id?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -868,7 +981,15 @@ export type Database = {
           trial_started_at?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tenants_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_notifications: {
         Row: {
