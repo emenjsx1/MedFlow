@@ -35,8 +35,8 @@ const allFeatures = [
 const plans = [{
   id: "monthly",
   name: "Mensal",
-  originalPrice: 197,
-  price: 47,
+  originalPrice: 297,
+  price: 197,
   interval: "mês",
   description: "Pagamento mensal",
   features: allFeatures,
@@ -44,10 +44,10 @@ const plans = [{
 }, {
   id: "quarterly",
   name: "Trimestral",
-  originalPrice: 591,
-  price: 127,
+  originalPrice: 891,
+  price: 497,
   interval: "trimestre",
-  savings: "Economize 78%",
+  savings: "Economize 44%",
   popular: true,
   hot: true,
   description: "3 meses de acesso",
@@ -56,10 +56,10 @@ const plans = [{
 }, {
   id: "annual",
   name: "Anual",
-  originalPrice: 2364,
-  price: 470,
+  originalPrice: 3564,
+  price: 1497,
   interval: "ano",
-  savings: "Economize mais de 80%",
+  savings: "Economize 37%",
   description: "12 meses de acesso",
   features: allFeatures,
   checkoutUrl: "https://checkout.escalepay.com/3059186"
