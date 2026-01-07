@@ -362,6 +362,68 @@ Deno.serve(async (req) => {
     const tenantId = settings.tenant_id
 
     // =====================================================================
+    // Check if agent is paused for this conversation (Human Takeover)
+    // =====================================================================
+    const { data: agentConversation } = await supabase
+      .from('agent_conversations')
+      .select('id, agent_paused, agent_reactivate_at')
+      .eq('tenant_id', tenantId)
+      .eq('patient_phone', patientPhone)
+      .maybeSingle()
+
+    // Check if we need to auto-reactivate based on timeout
+    if (agentConversation?.agent_paused && agentConversation?.agent_reactivate_at) {
+      const reactivateAt = new Date(agentConversation.agent_reactivate_at)
+      if (reactivateAt <= new Date()) {
+        console.log('Auto-reactivating agent for conversation:', agentConversation.id)
+        await supabase
+          .from('agent_conversations')
+          .update({
+            agent_paused: false,
+            agent_paused_at: null,
+            agent_reactivate_at: null,
+            paused_by_user_id: null
+          })
+          .eq('id', agentConversation.id)
+      }
+    }
+
+    // Re-check after potential reactivation
+    const { data: currentConversation } = await supabase
+      .from('agent_conversations')
+      .select('agent_paused')
+      .eq('tenant_id', tenantId)
+      .eq('patient_phone', patientPhone)
+      .maybeSingle()
+
+    if (currentConversation?.agent_paused) {
+      console.log('Agent is paused for this conversation (Human Takeover active), skipping AI response')
+      
+      // Save the inbound message but don't process with AI
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('whatsapp', patientPhone)
+        .maybeSingle()
+
+      if (patient) {
+        await supabase.from('messages').insert({
+          tenant_id: tenantId,
+          patient_id: patient.id,
+          body: messageText,
+          direction: 'inbound',
+          sent_at: new Date().toISOString(),
+        })
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, agentPaused: true, message: 'Human takeover active' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // =====================================================================
     // Se a transcrição falhou, responder direto sem chamar o agente
     // =====================================================================
     if (transcriptionFailed) {

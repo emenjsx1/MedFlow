@@ -16,6 +16,9 @@ export type Database = {
     Tables: {
       agent_conversations: {
         Row: {
+          agent_paused: boolean | null
+          agent_paused_at: string | null
+          agent_reactivate_at: string | null
           appointment_id: string | null
           created_at: string | null
           ended_at: string | null
@@ -24,10 +27,14 @@ export type Database = {
           outcome: string | null
           patient_id: string | null
           patient_phone: string
+          paused_by_user_id: string | null
           started_at: string
           tenant_id: string
         }
         Insert: {
+          agent_paused?: boolean | null
+          agent_paused_at?: string | null
+          agent_reactivate_at?: string | null
           appointment_id?: string | null
           created_at?: string | null
           ended_at?: string | null
@@ -36,10 +43,14 @@ export type Database = {
           outcome?: string | null
           patient_id?: string | null
           patient_phone: string
+          paused_by_user_id?: string | null
           started_at?: string
           tenant_id: string
         }
         Update: {
+          agent_paused?: boolean | null
+          agent_paused_at?: string | null
+          agent_reactivate_at?: string | null
           appointment_id?: string | null
           created_at?: string | null
           ended_at?: string | null
@@ -48,6 +59,7 @@ export type Database = {
           outcome?: string | null
           patient_id?: string | null
           patient_phone?: string
+          paused_by_user_id?: string | null
           started_at?: string
           tenant_id?: string
         }
@@ -726,6 +738,7 @@ export type Database = {
         Args: { p_patient_id: string }
         Returns: Database["public"]["Enums"]["risk_level"]
       }
+      check_agent_reactivation: { Args: never; Returns: undefined }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
