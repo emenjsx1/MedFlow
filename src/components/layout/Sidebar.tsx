@@ -121,7 +121,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Logo */}
       <div className="p-6">
         <div className="flex flex-col">
-          <Logo size="lg" className="text-sidebar-foreground" />
+          <Logo size="lg" variant="white" className="text-sidebar-foreground" />
           <p className="text-xs text-sidebar-foreground/60 mt-1 ml-[60px]">Gestão de Consultas</p>
         </div>
       </div>

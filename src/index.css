@@ -55,8 +55,8 @@ html, body {
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 15%;
 
-    /* Primary: Deep teal */
-    --primary: 175 60% 35%;
+    /* Primary: Azul MedFlow #0066CC */
+    --primary: 210 100% 40%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: Soft blue-gray */
@@ -66,8 +66,8 @@ html, body {
     --muted: 210 15% 92%;
     --muted-foreground: 215 15% 50%;
 
-    /* Accent: Warm coral for CTAs */
-    --accent: 15 80% 55%;
+    /* Accent: Azul claro MedFlow #3399FF */
+    --accent: 210 100% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 75% 55%;
@@ -83,24 +83,24 @@ html, body {
 
     --border: 210 20% 88%;
     --input: 210 20% 88%;
-    --ring: 175 60% 35%;
+    --ring: 210 100% 40%;
 
     --radius: 0.75rem;
 
     /* Sidebar */
-    --sidebar-background: 175 50% 18%;
-    --sidebar-foreground: 175 10% 90%;
-    --sidebar-primary: 175 60% 45%;
+    --sidebar-background: 210 100% 30%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 210 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 175 40% 25%;
-    --sidebar-accent-foreground: 175 10% 95%;
-    --sidebar-border: 175 40% 25%;
-    --sidebar-ring: 175 60% 45%;
+    --sidebar-accent: 210 100% 35%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 100% 35%;
+    --sidebar-ring: 210 100% 50%;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(175 60% 35%), hsl(190 55% 40%));
-    --gradient-accent: linear-gradient(135deg, hsl(15 80% 55%), hsl(25 85% 50%));
-    --gradient-sidebar: linear-gradient(180deg, hsl(175 50% 18%), hsl(180 45% 12%));
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 40%), hsl(210 100% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(210 100% 50%), hsl(210 100% 70%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(210 100% 30%), hsl(210 100% 25%));
   }
 
   .dark {
@@ -113,8 +113,8 @@ html, body {
     --popover: 215 25% 13%;
     --popover-foreground: 210 20% 95%;
 
-    --primary: 175 55% 45%;
-    --primary-foreground: 215 25% 10%;
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 215 20% 18%;
     --secondary-foreground: 210 15% 85%;
@@ -122,7 +122,7 @@ html, body {
     --muted: 215 20% 18%;
     --muted-foreground: 210 15% 60%;
 
-    --accent: 15 75% 50%;
+    --accent: 210 100% 65%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 45%;
@@ -137,16 +137,16 @@ html, body {
 
     --border: 215 20% 20%;
     --input: 215 20% 20%;
-    --ring: 175 55% 45%;
+    --ring: 210 100% 50%;
 
     --sidebar-background: 215 25% 8%;
     --sidebar-foreground: 210 15% 85%;
-    --sidebar-primary: 175 55% 50%;
+    --sidebar-primary: 210 100% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 20% 15%;
-    --sidebar-accent-foreground: 210 15% 90%;
-    --sidebar-border: 215 20% 15%;
-    --sidebar-ring: 175 55% 50%;
+    --sidebar-accent: 210 100% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 100% 40%;
+    --sidebar-ring: 210 100% 55%;
   }
 }
 
@@ -243,4 +243,107 @@ html, body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Animation for the pulsing effect */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Animation for the ping effect */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Custom animations for the orbital timeline */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.duration-300 {
+  transition-duration: 300ms;
+}
+
+.duration-700 {
+  transition-duration: 700ms;
+}
+
+.duration-1000 {
+  transition-duration: 1000ms;
+}
+
+/* Backdrop blur */
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+}
+
+/* Custom gradients */
+.bg-gradient-orbital {
+  background: linear-gradient(to bottom right, #6366f1, #3b82f6, #14b8a6);
+}
+
+/* Custom shadows */
+.shadow-orbital {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+/* Spotlight animation */
+@keyframes spotlight {
+  0% {
+    opacity: 0;
+    transform: translate(-72%, -62%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(1);
+  }
+}
+
+.animate-spotlight {
+  animation: spotlight 2s ease 0.75s 1 forwards;
+}
+
+/* Marquee animations */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
+}
+
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
+}
+
+.animate-marquee {
+  animation: marquee var(--duration) infinite linear;
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical var(--duration) linear infinite;
 }

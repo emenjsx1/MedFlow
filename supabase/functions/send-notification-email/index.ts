@@ -163,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const clinicName = settings.clinic_name || 'AgendaClin';
+    const clinicName = settings.clinic_name || 'MedFlow';
     const { subject, html } = getEmailContent(type, appointmentData, clinicName);
 
     console.log('Sending notification email to:', emails);

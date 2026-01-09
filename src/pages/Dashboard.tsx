@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -36,8 +37,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { showOnboarding, setShowOnboarding, completeOnboarding } = useOnboarding();
-  const { tenantId } = useAuth();
+  const { tenantId, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [professionalFilter, setProfessionalFilter] = useState<string>('all');
@@ -46,17 +48,29 @@ export default function Dashboard() {
   const [professionals, setProfessionals] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
   const [tenantTimezone, setTenantTimezone] = useState<string>('America/Sao_Paulo');
   const [businessHoursStart, setBusinessHoursStart] = useState<string>('08:00');
   const [businessHoursEnd, setBusinessHoursEnd] = useState<string>('18:00');
 
+  // Redirecionar apenas super_admins para Super Admin
+  // Admins normais ficam no dashboard
   useEffect(() => {
-    if (tenantId) {
+    if (!authLoading && isSuperAdmin) {
+      navigate('/super-admin');
+    }
+  }, [authLoading, isSuperAdmin, navigate]);
+
+  useEffect(() => {
+    if (tenantId && !isSuperAdmin) {
+      // Carregar dados para admins e usuários normais (mas não para super_admins)
       loadAppointments();
       loadProfessionals();
       loadTenantSettings();
+      checkGoogleCalendarStatus();
     }
-  }, [tenantId, selectedDate]);
+  }, [tenantId, selectedDate, isSuperAdmin]);
 
   const loadTenantSettings = async () => {
     try {
@@ -73,6 +87,55 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error loading tenant settings:', error);
+    }
+  };
+
+  const checkGoogleCalendarStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
+        body: { action: 'status' },
+      });
+
+      if (error) throw error;
+      setGoogleConnected(data?.connected || false);
+    } catch (error) {
+      console.error('Error checking Google Calendar status:', error);
+      setGoogleConnected(false);
+    }
+  };
+
+  const handleSyncGoogleCalendar = async () => {
+    if (!googleConnected) {
+      toast({
+        title: 'Google Calendar não conectado',
+        description: 'Por favor, conecte o Google Calendar nas configurações primeiro.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-google-calendar');
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sincronização concluída',
+        description: `${data.synced} agendamento(s) sincronizado(s). ${data.skipped} já existente(s).`,
+      });
+
+      // Reload appointments after sync
+      await loadAppointments();
+    } catch (error: any) {
+      console.error('Error syncing Google Calendar:', error);
+      toast({
+        title: 'Erro na sincronização',
+        description: error.message || 'Não foi possível sincronizar o Google Calendar.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -215,7 +278,7 @@ export default function Dashboard() {
         case 'send_reminder':
           // Send check-in reminder with link
           if (appointment.patient_phone) {
-            const publicBaseUrl = 'https://pewviewagendaclin.lovable.app';
+            const publicBaseUrl = 'https://medflow.app';
             const checkinUrl = `${publicBaseUrl}/checkin/${id}`;
             const scheduledDate = new Date(appointment.scheduled_at);
             const dateStr = format(scheduledDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
@@ -350,15 +413,28 @@ export default function Dashboard() {
               Gerencie as consultas e confirmações de hoje
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-            Atualizar
-          </Button>
+          <div className="flex gap-2">
+            {googleConnected && (
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={handleSyncGoogleCalendar}
+                disabled={syncing}
+              >
+                <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
+                {syncing ? 'Sincronizando...' : 'Sincronizar Google'}
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}

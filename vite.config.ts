@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
@@ -12,15 +11,14 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(), 
-    mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'robots.txt'],
+      includeAssets: ['faviconazul.png', 'robots.txt'],
       manifest: {
-        name: 'AgendaClin - Gestão de Consultas',
-        short_name: 'AgendaClin',
-        description: 'Sistema inteligente de agendamento e confirmação de consultas via WhatsApp',
-        theme_color: '#0ea5e9',
+        name: 'MedFlow - Clinic Management',
+        short_name: 'MedFlow',
+        description: 'Intelligent appointment scheduling and confirmation system via WhatsApp',
+        theme_color: '#0066CC',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',

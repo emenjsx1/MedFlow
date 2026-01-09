@@ -33,7 +33,7 @@ export function TrialExpiredModal({ open }: TrialExpiredModalProps) {
             Seu período de teste expirou
           </DialogTitle>
           <DialogDescription className="text-center">
-            Seus 3 dias de teste gratuito terminaram. Para continuar usando o AgendaClin, 
+            Seus 3 dias de teste gratuito terminaram. Para continuar usando o MedFlow, 
             escolha um plano de assinatura.
           </DialogDescription>
         </DialogHeader>

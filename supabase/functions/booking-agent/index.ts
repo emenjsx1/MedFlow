@@ -229,7 +229,10 @@ REGRAS DE RESPOSTA:
 8. AGENDAMENTOS:
    - Quando um agendamento for confirmado, responde normalmente
    - Inclui na resposta algo como "Consulta agendada para [data] às [hora]"
-   - Após confirmar agendamento, menciona que o paciente receberá um link para check-in antes da consulta
+   - IMPORTANTE: Quando confirmar um agendamento com o paciente, DEVE incluir no final da resposta (em uma linha separada, após um espaço em branco) um JSON estruturado com os dados do agendamento. Formato: {"action":"create_appointment","date":"YYYY-MM-DD","time":"HH:MM","professional":"Nome do Profissional ou null"}
+   - O JSON deve estar em uma linha separada no final da resposta, após a mensagem normal ao paciente
+   - O link de check-in será enviado automaticamente pelo sistema após criar o agendamento
+   - Exemplo de resposta: "Perfeito! Sua consulta está agendada para 15/01/2025 às 14:00. Te vejo lá!\n\n{\"action\":\"create_appointment\",\"date\":\"2025-01-15\",\"time\":\"14:00\",\"professional\":\"Dr. Silva\"}"
 ${faqsText}
 
 ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
@@ -286,11 +289,166 @@ ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
     }
 
     const aiData = await aiResponse.json()
-    const reply = aiData.choices?.[0]?.message?.content || 'Desculpe, não entendi. Pode repetir?'
+    let reply = aiData.choices?.[0]?.message?.content || 'Desculpe, não entendi. Pode repetir?'
 
     console.log('AI reply:', reply)
 
-    // Salvar resposta no banco
+    // Tentar extrair informações de agendamento da resposta da IA
+    let appointmentCreated = false
+    let createdAppointmentId: string | null = null
+    
+    try {
+      // Procurar por JSON no final da resposta (pode estar em múltiplas linhas)
+      const lines = reply.split('\n')
+      let jsonLine = null
+      
+      // Procurar a última linha que parece ser JSON
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim()
+        if (line.startsWith('{') && line.includes('"action"') && line.includes('create_appointment')) {
+          jsonLine = line
+          break
+        }
+      }
+      
+      if (jsonLine) {
+        console.log('Found appointment JSON in AI response:', jsonLine)
+        const appointmentData = JSON.parse(jsonLine)
+        
+        if (appointmentData.action === 'create_appointment' && appointmentData.date && appointmentData.time) {
+          // Remover o JSON da resposta antes de enviar ao paciente
+          reply = reply.replace(new RegExp(jsonLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '').trim()
+          
+          // Parse da data e hora
+          const [year, month, day] = appointmentData.date.split('-').map(Number)
+          const [hours, minutes] = appointmentData.time.split(':').map(Number)
+          
+          // Criar data/hora no timezone da clínica
+          // Usar a data atual como base e ajustar para o timezone correto
+          const appointmentDateTime = new Date()
+          appointmentDateTime.setUTCFullYear(year, month - 1, day)
+          appointmentDateTime.setUTCHours(hours, minutes, 0, 0)
+          
+          // Ajustar para o timezone da clínica
+          const timezone = settings.timezone || 'Africa/Maputo'
+          const timezoneOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'short' })
+          
+          console.log('Creating appointment:', {
+            date: appointmentData.date,
+            time: appointmentData.time,
+            professional: appointmentData.professional,
+            scheduledAt: appointmentDateTime.toISOString()
+          })
+          
+          // Verificar se a data não é no passado
+          const now = new Date()
+          if (appointmentDateTime < now) {
+            console.error('Cannot create appointment in the past:', appointmentDateTime, 'vs', now)
+          } else {
+            // Encontrar profissional se especificado
+            let professionalId: string | null = null
+            let professionalName: string | null = appointmentData.professional && appointmentData.professional !== 'null' ? appointmentData.professional : null
+            
+            if (professionalName && professionals && professionals.length > 0) {
+              const matchedProfessional = professionals.find((p: any) => 
+                p.name.toLowerCase().includes(professionalName!.toLowerCase())
+              )
+              if (matchedProfessional) {
+                professionalId = matchedProfessional.id
+                professionalName = matchedProfessional.name
+              }
+            } else if (professionals && professionals.length === 1) {
+              // Se só há um profissional, usar ele
+              professionalId = professionals[0].id
+              professionalName = professionals[0].name
+            }
+            
+            // Duração padrão da consulta
+            const durationMinutes = professionalId && professionals?.find((p: any) => p.id === professionalId)
+              ? (professionals.find((p: any) => p.id === professionalId) as any).appointment_duration_minutes || settings.appointment_duration_minutes || 30
+              : settings.appointment_duration_minutes || 30
+            
+            // Criar agendamento
+            const appointmentPayload = {
+              tenant_id: tenantId,
+              patient_id: patientId,
+              patient_name: patientName || existingPatient?.name || 'Sem nome',
+              patient_phone: patientPhone,
+              scheduled_at: appointmentDateTime.toISOString(),
+              duration_minutes: durationMinutes,
+              professional_id: professionalId,
+              professional_name: professionalName,
+              status: 'pending' as const,
+            }
+            
+            console.log('Inserting appointment:', appointmentPayload)
+            
+            const { data: newAppointment, error: appointmentError } = await supabase
+              .from('appointments')
+              .insert(appointmentPayload)
+              .select('id, scheduled_at, professional_name, patient_name')
+              .single()
+            
+            if (appointmentError) {
+              console.error('Error creating appointment:', appointmentError)
+            } else if (newAppointment) {
+              appointmentCreated = true
+              createdAppointmentId = newAppointment.id
+              console.log('✅ Appointment created successfully:', newAppointment.id, newAppointment.scheduled_at)
+            }
+          }
+        } else {
+          console.log('Appointment data incomplete:', appointmentData)
+        }
+      } else {
+        console.log('No appointment JSON found in AI response')
+      }
+    } catch (error) {
+      console.error('Error parsing appointment data from AI response:', error)
+      // Continuar mesmo se houver erro ao extrair dados de agendamento
+    }
+
+    // Usar o agendamento recém-criado ou buscar um recente
+    let recentAppointment: { id: string; scheduled_at: string; professional_name: string | null; patient_name: string } | null = null
+    if (appointmentCreated && createdAppointmentId) {
+      const { data: appointment } = await supabase
+        .from('appointments')
+        .select('id, scheduled_at, professional_name, patient_name')
+        .eq('id', createdAppointmentId)
+        .single()
+      if (appointment) {
+        recentAppointment = appointment
+      }
+    } else {
+      // Buscar agendamento recente do paciente (criado nos últimos 2 minutos)
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      const { data: foundAppointment } = await supabase
+        .from('appointments')
+        .select('id, scheduled_at, professional_name, patient_name')
+        .eq('tenant_id', tenantId)
+        .eq('patient_id', patientId)
+        .eq('status', 'pending')
+        .gte('created_at', twoMinutesAgo)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (foundAppointment) {
+        recentAppointment = foundAppointment
+      }
+    }
+
+    // Se há um agendamento recente, adicionar link de check-in diretamente na resposta
+    if (recentAppointment) {
+      const appUrl = Deno.env.get('APP_URL') || 'https://medflow.app'
+      const checkinLink = `${appUrl}/checkin/${recentAppointment.id}`
+      
+      // Adicionar o link de check-in diretamente na resposta
+      reply = reply.trim() + `\n\n📋 *Link de Check-in*\nAntes da sua consulta, acesse o link abaixo para confirmar sua presença (disponível 5h antes do horário agendado):\n\n${checkinLink}`
+      
+      console.log('Added check-in link to reply for appointment:', recentAppointment.id)
+    }
+
+    // Salvar resposta no banco (já com o link de check-in se houver)
     await supabase.from('messages').insert({
       tenant_id: tenantId,
       patient_id: patientId,
@@ -298,46 +456,6 @@ ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
       direction: 'outbound',
       sent_at: new Date().toISOString(),
     })
-
-    // Verificar se foi feito um agendamento e enviar link de check-in
-    // Buscar agendamento recente do paciente (criado nos últimos 2 minutos)
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
-    const { data: recentAppointment } = await supabase
-      .from('appointments')
-      .select('id, scheduled_at, professional_name, patient_name')
-      .eq('tenant_id', tenantId)
-      .eq('patient_id', patientId)
-      .eq('status', 'pending')
-      .gte('created_at', twoMinutesAgo)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    // Se há um agendamento recente, enviar link de check-in
-    let checkinMessage = ''
-    if (recentAppointment && EVOLUTION_API_URL && EVOLUTION_API_KEY && settings?.whatsapp_session_id) {
-      const appointmentDate = new Date(recentAppointment.scheduled_at)
-      const formattedDate = new Intl.DateTimeFormat('pt-MZ', {
-        timeZone: settings.timezone || 'Africa/Maputo',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).format(appointmentDate)
-      
-      const formattedTime = new Intl.DateTimeFormat('pt-MZ', {
-        timeZone: settings.timezone || 'Africa/Maputo',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(appointmentDate)
-
-      // URL base do app (usa a variável de ambiente ou fallback)
-      const appUrl = Deno.env.get('APP_URL') || 'https://agenda-clin.lovable.app'
-      const checkinLink = `${appUrl}/checkin/${recentAppointment.id}`
-
-      checkinMessage = `\n\n📋 *Link de Check-in*\nAntes da sua consulta, acesse o link abaixo para confirmar sua presença (disponível 5h antes do horário agendado):\n\n${checkinLink}`
-
-      console.log('Sending check-in link for appointment:', recentAppointment.id)
-    }
 
     // Enviar resposta via WhatsApp
     if (EVOLUTION_API_URL && EVOLUTION_API_KEY && settings?.whatsapp_session_id) {
@@ -361,39 +479,7 @@ ${greetingMessage ? `SAUDAÇÃO INICIAL: "${greetingMessage}"` : ''}`
         if (!sendResponse.ok) {
           console.error('WhatsApp send failed:', await sendResponse.text())
         } else {
-          console.log('WhatsApp message sent successfully')
-        }
-
-        // Se houver link de check-in, enviar como mensagem separada
-        if (checkinMessage) {
-          await new Promise(resolve => setTimeout(resolve, 1000)) // Pequena pausa
-          
-          const checkinResponse = await fetch(`${EVOLUTION_API_URL}/message/sendText/${settings.whatsapp_session_id}`, {
-            method: 'POST',
-            headers: {
-              'apikey': EVOLUTION_API_KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              number: whatsappNumber,
-              text: checkinMessage.trim(),
-            }),
-          })
-
-          if (!checkinResponse.ok) {
-            console.error('Check-in link send failed:', await checkinResponse.text())
-          } else {
-            console.log('Check-in link sent successfully')
-            
-            // Salvar mensagem do link de check-in
-            await supabase.from('messages').insert({
-              tenant_id: tenantId,
-              patient_id: patientId,
-              body: checkinMessage.trim(),
-              direction: 'outbound',
-              sent_at: new Date().toISOString(),
-            })
-          }
+          console.log('WhatsApp message sent successfully (with check-in link if appointment was created)')
         }
       } catch (error) {
         console.error('WhatsApp send error:', error)

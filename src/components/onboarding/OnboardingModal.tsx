@@ -34,7 +34,7 @@ export default function OnboardingModal({ open, onOpenChange, onComplete }: Onbo
   const steps: OnboardingStep[] = [
     {
       id: 'welcome',
-      title: 'Bem-vindo ao AgendaClin! 🎉',
+      title: 'Bem-vindo ao MedFlow! 🎉',
       description: 'Vamos configurar sua clínica em poucos passos',
       icon: Sparkles,
       content: (
@@ -43,7 +43,7 @@ export default function OnboardingModal({ open, onOpenChange, onComplete }: Onbo
             <Sparkles className="w-10 h-10 text-primary" />
           </div>
           <p className="text-muted-foreground max-w-md mx-auto">
-            O AgendaClin vai automatizar suas confirmações de consulta via WhatsApp, 
+            O MedFlow vai automatizar suas confirmações de consulta via WhatsApp, 
             reduzir faltas e preencher buracos na agenda automaticamente.
           </p>
           <div className="grid grid-cols-3 gap-4 pt-4">
@@ -172,7 +172,7 @@ export default function OnboardingModal({ open, onOpenChange, onComplete }: Onbo
             <CheckCircle2 className="w-10 h-10 text-success" />
           </div>
           <p className="text-muted-foreground max-w-md mx-auto">
-            Agora você pode começar a usar o AgendaClin! 
+            Agora você pode começar a usar o MedFlow! 
             Adicione seus primeiros pacientes e agendamentos.
           </p>
           <div className="grid grid-cols-2 gap-4 pt-4 max-w-sm mx-auto">

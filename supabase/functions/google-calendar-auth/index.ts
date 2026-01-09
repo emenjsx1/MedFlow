@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       // Default frontend URL if returnUrl is missing or relative
       const baseUrl = returnUrl && returnUrl.startsWith('http') 
         ? returnUrl 
-        : 'https://agendacliin.lovable.app/settings'
+        : 'https://medflow.app/settings'
 
       console.log('Tenant ID:', tenantId, 'Return URL:', baseUrl)
 

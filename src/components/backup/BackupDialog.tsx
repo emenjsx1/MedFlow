@@ -110,7 +110,7 @@ export default function BackupDialog({ open, onOpenChange }: BackupDialogProps) 
   };
 
   const handleDownloadJSON = () => {
-    const filename = `backup_agendaclin_${format(new Date(), 'yyyy-MM-dd_HH-mm')}`;
+    const filename = `backup_medflow_${format(new Date(), 'yyyy-MM-dd_HH-mm')}`;
     exportToJSON(backupData as any, filename);
     toast.success('Backup JSON baixado!');
   };

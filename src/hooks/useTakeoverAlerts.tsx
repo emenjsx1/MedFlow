@@ -71,7 +71,7 @@ export function useTakeoverAlerts(settings: TakeoverAlertSettings = { soundEnabl
     if (settings.browserNotificationEnabled && hasPermissionRef.current) {
       new Notification(title, {
         body: message,
-        icon: '/favicon.png',
+        icon: '/faviconazul.png',
         tag: 'takeover-alert',
         requireInteraction: true,
       });

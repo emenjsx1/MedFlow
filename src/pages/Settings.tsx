@@ -42,6 +42,7 @@ import {
   Mail,
   Database,
   Download,
+  Package,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -114,6 +115,14 @@ export default function Settings() {
   // Backup dialog state
   const [backupDialogOpen, setBackupDialogOpen] = useState(false);
 
+  // Plan usage state
+  const [planInfo, setPlanInfo] = useState<{
+    subscriptionStatus: string | null;
+    trialEndsAt: string | null;
+    subscriptionEndsAt: string | null;
+    planName: string | null;
+  } | null>(null);
+
   // Handle OAuth callback from URL params
   useEffect(() => {
     const googleSuccess = searchParams.get('google_success');
@@ -136,7 +145,50 @@ export default function Settings() {
   useEffect(() => {
     loadIntegrationStatus();
     loadClinicSettings();
+    loadPlanInfo();
   }, []);
+
+  const loadPlanInfo = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!profile?.tenant_id) return;
+
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('subscription_status, trial_ends_at, subscription_ends_at, plan_id')
+        .eq('id', profile.tenant_id)
+        .maybeSingle();
+
+      if (tenant) {
+        let planName = null;
+        if (tenant.plan_id) {
+          const { data: plan } = await supabase
+            .from('subscription_plans')
+            .select('name')
+            .eq('id', tenant.plan_id)
+            .maybeSingle();
+          planName = plan?.name || null;
+        }
+
+        setPlanInfo({
+          subscriptionStatus: tenant.subscription_status,
+          trialEndsAt: tenant.trial_ends_at,
+          subscriptionEndsAt: tenant.subscription_ends_at,
+          planName,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading plan info:', error);
+    }
+  };
 
   const loadClinicSettings = async () => {
     try {
@@ -599,6 +651,10 @@ export default function Settings() {
             <TabsTrigger value="security" className="gap-2">
               <Lock className="w-4 h-4" />
               Segurança
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="gap-2">
+              <Package className="w-4 h-4" />
+              Plano
             </TabsTrigger>
           </TabsList>
 
@@ -1388,6 +1444,146 @@ Exemplo:
                     <li>• O paciente pode perguntar sobre localização, horários e pedir suporte</li>
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Plan Tab */}
+          <TabsContent value="plan" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Uso do Plano
+                </CardTitle>
+                <CardDescription>
+                  Informações sobre seu plano e data de expiração
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {planInfo ? (
+                  <>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-muted-foreground">Status do Plano</span>
+                          <Badge 
+                            variant={
+                              planInfo.subscriptionStatus === 'active' 
+                                ? 'default' 
+                                : planInfo.subscriptionStatus === 'trial' 
+                                ? 'secondary' 
+                                : 'destructive'
+                            }
+                          >
+                            {planInfo.subscriptionStatus === 'active' && 'Ativo'}
+                            {planInfo.subscriptionStatus === 'trial' && 'Trial'}
+                            {planInfo.subscriptionStatus === 'expired' && 'Expirado'}
+                            {planInfo.subscriptionStatus === 'blocked' && 'Bloqueado'}
+                          </Badge>
+                        </div>
+                        {planInfo.planName && (
+                          <div className="mt-2">
+                            <span className="text-sm text-muted-foreground">Plano: </span>
+                            <span className="text-sm font-medium">{planInfo.planName}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {(planInfo.subscriptionStatus === 'trial' || planInfo.subscriptionStatus === 'active') && (
+                        <div className="p-4 border rounded-lg space-y-3">
+                          {planInfo.subscriptionStatus === 'trial' && planInfo.trialEndsAt && (
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium">Trial Expira em</span>
+                                <span className={cn(
+                                  "text-sm font-semibold",
+                                  new Date(planInfo.trialEndsAt) <= new Date() 
+                                    ? "text-destructive" 
+                                    : new Date(planInfo.trialEndsAt) <= new Date(Date.now() + 24 * 60 * 60 * 1000)
+                                    ? "text-orange-500"
+                                    : "text-foreground"
+                                )}>
+                                  {new Date(planInfo.trialEndsAt).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              {new Date(planInfo.trialEndsAt) <= new Date() ? (
+                                <p className="text-xs text-destructive mt-1">
+                                  Seu trial expirou. Atualize seu plano para continuar usando o sistema.
+                                </p>
+                              ) : new Date(planInfo.trialEndsAt) <= new Date(Date.now() + 24 * 60 * 60 * 1000) ? (
+                                <p className="text-xs text-orange-500 mt-1">
+                                  Seu trial expira em breve. Considere atualizar seu plano.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {Math.ceil((new Date(planInfo.trialEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {planInfo.subscriptionStatus === 'active' && planInfo.subscriptionEndsAt && (
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium">Assinatura Expira em</span>
+                                <span className={cn(
+                                  "text-sm font-semibold",
+                                  new Date(planInfo.subscriptionEndsAt) <= new Date() 
+                                    ? "text-destructive" 
+                                    : new Date(planInfo.subscriptionEndsAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                    ? "text-orange-500"
+                                    : "text-foreground"
+                                )}>
+                                  {new Date(planInfo.subscriptionEndsAt).toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              {new Date(planInfo.subscriptionEndsAt) <= new Date() ? (
+                                <p className="text-xs text-destructive mt-1">
+                                  Sua assinatura expirou. Renove para continuar usando o sistema.
+                                </p>
+                              ) : new Date(planInfo.subscriptionEndsAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) ? (
+                                <p className="text-xs text-orange-500 mt-1">
+                                  Sua assinatura expira em breve. Renove para evitar interrupções.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {Math.ceil((new Date(planInfo.subscriptionEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {planInfo.subscriptionStatus === 'trial' && (
+                        <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                          <p className="text-sm font-medium mb-1">Plano Gratuito (Trial)</p>
+                          <p className="text-xs text-muted-foreground">
+                            Você está usando o plano gratuito de trial. Atualize para um plano pago para continuar usando todas as funcionalidades após o término do trial.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Carregando informações do plano...</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

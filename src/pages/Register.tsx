@@ -86,7 +86,7 @@ export default function Register() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-sidebar p-12 flex-col justify-between" style={{ background: 'var(--gradient-sidebar)' }}>
         <div>
-          <Logo size="lg" className="text-sidebar-foreground mb-2" />
+          <Logo size="lg" variant="white" className="text-sidebar-foreground mb-2" />
           <p className="text-sidebar-foreground/70 text-sm">Teste grátis por 3 dias</p>
         </div>
 
@@ -129,7 +129,7 @@ export default function Register() {
         </div>
 
         <div className="text-sidebar-foreground/50 text-xs">
-          © 2024 AgendaClin. Todos os direitos reservados.
+          © 2024 MedFlow. Todos os direitos reservados.
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export default function Register() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center mb-8">
-            <Logo size="lg" />
+            <Logo size="lg" variant="white" />
           </div>
 
           <Card className="border-0 shadow-soft">

@@ -1,0 +1,24 @@
+{
+  "appName": "MedFlow",
+  "welcome": "Bienvenido",
+  "login": "Iniciar sesión",
+  "register": "Registrarse",
+  "dashboard": "Panel",
+  "settings": "Configuración",
+  "logout": "Cerrar sesión",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "delete": "Eliminar",
+  "edit": "Editar",
+  "create": "Crear",
+  "search": "Buscar",
+  "loading": "Cargando...",
+  "error": "Error",
+  "success": "Éxito",
+  "confirm": "Confirmar",
+  "close": "Cerrar"
+}
+
+
+
+

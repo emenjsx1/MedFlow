@@ -3,28 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>AgendaClin - Gestão Inteligente de Consultas</title>
-    <meta name="description" content="AgendaClin - Sistema inteligente de agendamento e confirmação de consultas via WhatsApp. Reduza faltas e automatize sua clínica." />
-    <meta name="author" content="AgendaClin" />
+    <title>MedFlow - Intelligent Clinic Management System</title>
+    <meta name="description" content="MedFlow - Intelligent appointment scheduling and confirmation system via WhatsApp. Reduce no-shows and automate your clinic with AI-powered automation." />
+    <meta name="author" content="MedFlow" />
     <meta name="keywords" content="agendamento, consultas, clínica, whatsapp, confirmação, médico, saúde" />
 
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#0ea5e9" />
+    <meta name="theme-color" content="#0066CC" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="AgendaClin" />
+    <meta name="apple-mobile-web-app-title" content="MedFlow" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
-    <meta property="og:title" content="AgendaClin - Gestão Inteligente de Consultas" />
-    <meta property="og:description" content="Sistema inteligente de agendamento e confirmação de consultas via WhatsApp. Reduza faltas e automatize sua clínica." />
+    <meta property="og:title" content="MedFlow - Intelligent Clinic Management System" />
+    <meta property="og:description" content="Intelligent appointment scheduling and confirmation system via WhatsApp. Reduce no-shows and automate your clinic with AI-powered automation." />
     <meta property="og:type" content="website" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AgendaClin - Gestão Inteligente de Consultas" />
-    <meta name="twitter:description" content="Sistema inteligente de agendamento e confirmação de consultas via WhatsApp." />
+    <meta name="twitter:title" content="MedFlow - Intelligent Clinic Management System" />
+    <meta name="twitter:description" content="Intelligent appointment scheduling and confirmation system via WhatsApp. Reduce no-shows and automate your clinic." />
     
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/faviconazul.png" />
 
     <!-- Meta Pixel Code -->
     <script>
@@ -52,12 +53,38 @@
 
     <!-- UTMify Pixel Script -->
     <script>
-      window.pixelId = "6948fe018f96554d7af8e788";
-      var a = document.createElement("script");
-      a.setAttribute("async", "");
-      a.setAttribute("defer", "");
-      a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-      document.head.appendChild(a);
+      (function() {
+        try {
+          // Silenciar erros de tracking não críticos
+          const originalFetch = window.fetch;
+          window.fetch = function(...args) {
+            const url = args[0]?.toString() || '';
+            // Ignorar requisições para localhost:3001/tracking
+            if (url.includes('localhost:3001/tracking') || url.includes('api6.ipify.org')) {
+              return Promise.reject(new Error('Tracking request blocked'));
+            }
+            return originalFetch.apply(this, args).catch(err => {
+              if (url.includes('tracking') || url.includes('pixel')) {
+                // Silenciar erros de tracking
+                return Promise.reject(err);
+              }
+              throw err;
+            });
+          };
+
+          window.pixelId = "6948fe018f96554d7af8e788";
+          var a = document.createElement("script");
+          a.setAttribute("async", "");
+          a.setAttribute("defer", "");
+          a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+          a.onerror = function() {
+            console.warn('UTMify Pixel script failed to load');
+          };
+          document.head.appendChild(a);
+        } catch (e) {
+          console.warn('Error loading UTMify Pixel:', e);
+        }
+      })();
     </script>
   </head>
 

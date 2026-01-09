@@ -13,7 +13,7 @@ const getWelcomeEmailHtml = (userName: string, userEmail: string, password: stri
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bem-vindo ao AgendaClin!</title>
+  <title>Bem-vindo ao MedFlow!</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -25,7 +25,7 @@ const getWelcomeEmailHtml = (userName: string, userEmail: string, password: stri
           <tr>
             <td style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #10b981 100%); padding: 40px 40px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
-                🎉 Bem-vindo ao AgendaClin!
+                🎉 Bem-vindo ao MedFlow!
               </h1>
               <p style="color: rgba(255, 255, 255, 0.9); margin: 12px 0 0 0; font-size: 16px;">
                 Sua conta foi criada com sucesso
@@ -41,7 +41,7 @@ const getWelcomeEmailHtml = (userName: string, userEmail: string, password: stri
               </p>
               
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                Obrigado por escolher o AgendaClin! Sua compra foi confirmada e sua conta já está pronta para uso. Abaixo estão suas credenciais de acesso:
+                Obrigado por escolher o MedFlow! Sua compra foi confirmada e sua conta já está pronta para uso. Abaixo estão suas credenciais de acesso:
               </p>
               
               <!-- Box de credenciais -->
@@ -79,14 +79,14 @@ const getWelcomeEmailHtml = (userName: string, userEmail: string, password: stri
               
               <!-- Botão de acesso -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendacliin.lovable.app/login" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);">
+                <a href="https://medflow.app/login" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);">
                   Acessar Minha Conta →
                 </a>
               </div>
               
               <!-- Recursos -->
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 24px 0 16px 0;">
-                Com o AgendaClin você pode:
+                Com o MedFlow você pode:
               </p>
               
               <ul style="color: #6b7280; font-size: 14px; line-height: 2; padding-left: 20px; margin: 0;">
@@ -106,7 +106,7 @@ const getWelcomeEmailHtml = (userName: string, userEmail: string, password: stri
                 Precisa de ajuda? Responda este email ou acesse nosso suporte.
               </p>
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                © 2024 AgendaClin. Todos os direitos reservados.
+                © 2024 MedFlow. Todos os direitos reservados.
               </p>
             </td>
           </tr>
@@ -126,7 +126,7 @@ const getPasswordChangedEmailHtml = (userName: string) => `
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Senha Alterada - AgendaClin</title>
+  <title>Senha Alterada - MedFlow</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -154,7 +154,7 @@ const getPasswordChangedEmailHtml = (userName: string) => `
               </p>
               
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                Este email confirma que sua senha do AgendaClin foi alterada com sucesso.
+                Este email confirma que sua senha do MedFlow foi alterada com sucesso.
               </p>
               
               <!-- Box de confirmação -->
@@ -173,7 +173,7 @@ const getPasswordChangedEmailHtml = (userName: string) => `
               
               <!-- Botão -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendacliin.lovable.app/login" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                <a href="https://medflow.app/login" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                   Acessar Minha Conta →
                 </a>
               </div>
@@ -184,7 +184,7 @@ const getPasswordChangedEmailHtml = (userName: string) => `
           <tr>
             <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                © 2024 AgendaClin. Todos os direitos reservados.
+                © 2024 MedFlow. Todos os direitos reservados.
               </p>
             </td>
           </tr>
@@ -204,7 +204,7 @@ const getSubscriptionCancelledEmailHtml = (userName: string) => `
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assinatura Cancelada - AgendaClin</title>
+  <title>Assinatura Cancelada - MedFlow</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -232,7 +232,7 @@ const getSubscriptionCancelledEmailHtml = (userName: string) => `
               </p>
               
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                Confirmamos o cancelamento da sua assinatura do AgendaClin. Seus dados permanecerão salvos por 30 dias caso deseje retornar.
+                Confirmamos o cancelamento da sua assinatura do MedFlow. Seus dados permanecerão salvos por 30 dias caso deseje retornar.
               </p>
               
               <!-- Box -->
@@ -252,7 +252,7 @@ const getSubscriptionCancelledEmailHtml = (userName: string) => `
               
               <!-- Botão -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendacliin.lovable.app" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                <a href="https://medflow.app" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                   Reativar Minha Conta →
                 </a>
               </div>
@@ -263,7 +263,7 @@ const getSubscriptionCancelledEmailHtml = (userName: string) => `
           <tr>
             <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                © 2024 AgendaClin. Todos os direitos reservados.
+                © 2024 MedFlow. Todos os direitos reservados.
               </p>
             </td>
           </tr>
@@ -283,7 +283,7 @@ const getPaymentPendingEmailHtml = (userName: string, planName: string) => `
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pagamento Pendente - AgendaClin</title>
+  <title>Pagamento Pendente - MedFlow</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -311,7 +311,7 @@ const getPaymentPendingEmailHtml = (userName: string, planName: string) => `
               </p>
               
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                Recebemos sua solicitação de assinatura do plano <strong>${planName || 'AgendaClin'}</strong>. Estamos aguardando a confirmação do pagamento.
+                Recebemos sua solicitação de assinatura do plano <strong>${planName || 'MedFlow'}</strong>. Estamos aguardando a confirmação do pagamento.
               </p>
               
               <!-- Box -->
@@ -332,7 +332,7 @@ const getPaymentPendingEmailHtml = (userName: string, planName: string) => `
           <tr>
             <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                © 2024 AgendaClin. Todos os direitos reservados.
+                © 2024 MedFlow. Todos os direitos reservados.
               </p>
             </td>
           </tr>
@@ -352,7 +352,7 @@ const getSubscriptionRenewedEmailHtml = (userName: string, planName: string, nex
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assinatura Renovada - AgendaClin</title>
+  <title>Assinatura Renovada - MedFlow</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -380,7 +380,7 @@ const getSubscriptionRenewedEmailHtml = (userName: string, planName: string, nex
               </p>
               
               <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
-                Ótimas notícias! Sua assinatura do plano <strong>${planName || 'AgendaClin'}</strong> foi renovada com sucesso.
+                Ótimas notícias! Sua assinatura do plano <strong>${planName || 'MedFlow'}</strong> foi renovada com sucesso.
               </p>
               
               <!-- Box -->
@@ -395,7 +395,7 @@ const getSubscriptionRenewedEmailHtml = (userName: string, planName: string, nex
               
               <!-- Botão -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://agendacliin.lovable.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                <a href="https://medflow.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                   Acessar Dashboard →
                 </a>
               </div>
@@ -406,7 +406,7 @@ const getSubscriptionRenewedEmailHtml = (userName: string, planName: string, nex
           <tr>
             <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                © 2024 AgendaClin. Todos os direitos reservados.
+                © 2024 MedFlow. Todos os direitos reservados.
               </p>
             </td>
           </tr>
@@ -441,24 +441,24 @@ serve(async (req) => {
     
     switch (type) {
       case 'welcome':
-        html = getWelcomeEmailHtml(name || 'Cliente', email, 'AgendaClin123');
-        subject = '🎉 Bem-vindo ao AgendaClin! Suas credenciais de acesso';
+        html = getWelcomeEmailHtml(name || 'Cliente', email, 'MedFlow123');
+        subject = '🎉 Bem-vindo ao MedFlow! Suas credenciais de acesso';
         break;
       case 'password_changed':
         html = getPasswordChangedEmailHtml(name || 'Cliente');
-        subject = '🔐 Sua senha foi alterada - AgendaClin';
+        subject = '🔐 Sua senha foi alterada - MedFlow';
         break;
       case 'subscription_cancelled':
         html = getSubscriptionCancelledEmailHtml(name || 'Cliente');
-        subject = '😢 Sua assinatura foi cancelada - AgendaClin';
+        subject = '😢 Sua assinatura foi cancelada - MedFlow';
         break;
       case 'payment_pending':
         html = getPaymentPendingEmailHtml(name || 'Cliente', 'Trimestral');
-        subject = '⏳ Pagamento pendente - AgendaClin';
+        subject = '⏳ Pagamento pendente - MedFlow';
         break;
       case 'subscription_renewed':
         html = getSubscriptionRenewedEmailHtml(name || 'Cliente', 'Trimestral', '21/01/2025');
-        subject = '🔄 Assinatura renovada - AgendaClin';
+        subject = '🔄 Assinatura renovada - MedFlow';
         break;
       default:
         return new Response(
@@ -468,7 +468,7 @@ serve(async (req) => {
     }
 
     const { data, error } = await resend.emails.send({
-      from: 'AgendaClin <agendaclin@mozcodes.space>',
+      from: 'MedFlow <noreply@medflow.app>',
       to: [email],
       subject: subject,
       html: html,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-const ONBOARDING_KEY = 'agendaclin_onboarding_complete';
+const ONBOARDING_KEY = 'medflow_onboarding_complete';
 
 export function useOnboarding() {
   const { user } = useAuth();

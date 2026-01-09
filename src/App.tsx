@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/hooks/useCurrency";
 import LandingPage from "./pages/LandingPage";
+import ProfessionalLandingPage from "./pages/ProfessionalLandingPage";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
 import Dashboard from "./pages/Dashboard";
@@ -27,6 +28,16 @@ import CRM from "./pages/CRM";
 import TakeoverHistory from "./pages/TakeoverHistory";
 import SuperAdmin from "./pages/SuperAdmin";
 import Register from "./pages/Register";
+import HelpCenter from "./pages/HelpCenter";
+import HelpArticle from "./pages/HelpArticle";
+import Contact from "./pages/Contact";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
+import CaseStudies from "./pages/CaseStudies";
+import About from "./pages/About";
+import Compare from "./pages/Compare";
+import Security from "./pages/Security";
+import Status from "./pages/Status";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +51,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/lp" element={<ProfessionalLandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -60,6 +72,16 @@ const App = () => (
               <Route path="/super-admin" element={<SuperAdmin />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/help" element={<HelpCenter />} />
+              <Route path="/help/:slug" element={<HelpArticle />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
+              <Route path="/case-studies" element={<CaseStudies />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/security" element={<Security />} />
+              <Route path="/status" element={<Status />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

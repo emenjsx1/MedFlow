@@ -1,20 +1,57 @@
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { MessageSquare, Bell, Clock, Sparkles, Play, ArrowRight, CheckCircle2, Users, Calendar, Bot, Shield, Zap, ChevronLeft, ChevronRight, Star, Plus, Minus, Flame } from "lucide-react";
+import { 
+  Calendar, 
+  MessageSquare, 
+  Bot, 
+  Bell, 
+  Users, 
+  BarChart3, 
+  Shield, 
+  Zap,
+  CheckCircle2,
+  ArrowRight,
+  TrendingUp,
+  Clock,
+  Smartphone,
+  Globe,
+  Lock,
+  ChevronRight,
+  Award,
+  Target,
+  BookOpen,
+  HelpCircle,
+  Menu,
+  X
+} from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import Logo from "@/components/Logo";
 import { useCurrency } from "@/hooks/useCurrency";
 import { CurrencySelector } from "@/components/CurrencySelector";
+import { Flame } from "lucide-react";
+import { SecurityBadges } from "@/components/trust/SecurityBadges";
+import { ComplianceBadges } from "@/components/trust/ComplianceBadges";
+import { Pricing } from "@/components/ui/pricing";
+import { Marquee } from "@/components/ui/3d-testimonials";
+import { SplineScene } from "@/components/ui/spline";
+import { Spotlight } from "@/components/ui/spotlight";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ShaderBackground from "@/components/ui/shader-background";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+
 const allFeatures = [
   "Agendamentos ilimitados",
   "WhatsApp integrado com QR Code",
   "Lembretes automáticos (1h e 10min antes)",
-  "Atendimento 24/7 automatizado via IA",
+  "Atendimento 24/7 automatizado",
   "Fila de espera inteligente",
   "Relatórios e métricas detalhadas",
   "Gestão completa de pacientes",
@@ -27,695 +64,953 @@ const allFeatures = [
   "Exportação de dados (CSV/Excel)",
   "Histórico completo de atendimentos",
   "Backup automático de dados",
-  "Takeover humano da IA",
+  "Atendimento humano quando necessário",
   "Suporte prioritário via WhatsApp",
   "Atualizações gratuitas",
   "Acesso Mobile e Desktop",
 ];
-const plans = [{
-  id: "monthly",
-  name: "Mensal",
-  originalPrice: 297,
-  price: 197,
-  interval: "mês",
-  description: "Pagamento mensal",
-  features: allFeatures,
-  checkoutUrl: "https://checkout.escalepay.com/3004344"
-}, {
-  id: "quarterly",
-  name: "Trimestral",
-  originalPrice: 891,
-  price: 497,
-  interval: "trimestre",
-  savings: "Economize 44%",
-  popular: true,
-  hot: true,
-  description: "3 meses de acesso",
-  features: allFeatures,
-  checkoutUrl: "https://checkout.escalepay.com/8383727"
-}, {
-  id: "annual",
-  name: "Anual",
-  originalPrice: 3564,
-  price: 1497,
-  interval: "ano",
-  savings: "Economize 37%",
-  description: "12 meses de acesso",
-  features: allFeatures,
-  checkoutUrl: "https://checkout.escalepay.com/3059186"
-}];
-const features = [{
-  icon: Bot,
-  title: "Atendimento 24/7 por IA",
-  description: "Responda pacientes a qualquer hora, mesmo enquanto você dorme"
-}, {
-  icon: Bell,
-  title: "Lembretes automáticos",
-  description: "Reduza faltas em até 70% com lembretes inteligentes"
-}, {
-  icon: Calendar,
-  title: "Agenda inteligente",
-  description: "Múltiplos profissionais com agendas independentes"
-}, {
-  icon: Users,
-  title: "Fila de espera",
-  description: "Preencha horários vagos automaticamente"
-}, {
-  icon: Shield,
-  title: "Google Calendar",
-  description: "Sincronização em tempo real com sua agenda"
-}, {
-  icon: Zap,
-  title: "Relatórios",
-  description: "Métricas e insights sobre sua clínica"
-}];
-const testimonials = [{
-  name: "Dr. Carlos Silva",
-  role: "Dentista",
-  image: "https://randomuser.me/api/portraits/men/32.jpg",
-  text: "Reduzi as faltas em 65% no primeiro mês. A IA responde meus pacientes perfeitamente, mesmo de madrugada.",
-  rating: 5
-}, {
-  name: "Dra. Ana Paula",
-  role: "Dermatologista",
-  image: "https://randomuser.me/api/portraits/women/44.jpg",
-  text: "Minha secretária agora foca no atendimento presencial. O WhatsApp automático mudou nossa rotina completamente.",
-  rating: 5
-}, {
-  name: "Dr. Roberto Mendes",
-  role: "Fisioterapeuta",
-  image: "https://randomuser.me/api/portraits/men/52.jpg",
-  text: "Em 3 meses recuperei o investimento. Menos faltas = mais faturamento. Simples assim.",
-  rating: 5
-}, {
-  name: "Dra. Mariana Costa",
-  role: "Psicóloga",
-  image: "https://randomuser.me/api/portraits/women/68.jpg",
-  text: "Pacientes adoram a praticidade de agendar pelo WhatsApp a qualquer hora. Recomendo para todos os colegas.",
-  rating: 5
-}];
-const targetAudience = [{
-  title: "Clínicas médicas"
-}, {
-  title: "Consultórios odontológicos"
-}, {
-  title: "Estéticas e spas"
-}, {
-  title: "Psicólogos e terapeutas"
-}, {
-  title: "Fisioterapeutas"
-}, {
-  title: "Oftalmologistas"
-}];
-const faqs = [{
-  question: "Preciso ter conhecimento técnico para usar?",
-  answer: "Não! O AgendaClin foi feito para ser simples. Em menos de 5 minutos você conecta seu WhatsApp e começa a usar. Temos tutoriais em vídeo e suporte em português."
-}, {
-  question: "Funciona com meu sistema atual?",
-  answer: "Sim! O AgendaClin funciona de forma independente e se integra com Google Calendar. Você pode continuar usando seu sistema atual enquanto aproveita nossa automação."
-}, {
-  question: "Posso cancelar a qualquer momento?",
-  answer: "Sim! Não temos fidelidade. Você pode cancelar quando quiser sem multas ou taxas extras."
-}, {
-  question: "A IA realmente responde bem os pacientes?",
-  answer: "Nossa IA foi treinada especificamente para atendimento em saúde. Ela entende contexto, horários, e responde de forma natural e profissional."
-}, {
-  question: "E se o paciente quiser falar com uma pessoa?",
-  answer: "A IA identifica quando o paciente precisa de atendimento humano e encaminha automaticamente para você ou sua equipe."
-}, {
-  question: "Quantos profissionais posso cadastrar?",
-  answer: "Ilimitados! Cada profissional tem sua própria agenda, horários de trabalho e pode ter seu próprio Google Calendar sincronizado."
-}];
-function VturbPlayer() {
-  useEffect(() => {
-    // Check if script already exists
-    const existingScript = document.querySelector('script[src*="converteai.net"]');
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.src = "https://scripts.converteai.net/06360127-0c05-416d-8bd8-3f5e34305802/players/69487a1e798d3e9d452d5a4b/v4/player.js";
-      script.async = true;
-      document.head.appendChild(script);
-    }
-  }, []);
 
+const features = [
+  {
+    icon: Bot,
+    title: "Atendimento 24/7 que você NÃO tem",
+    description: "Enquanto você dorme, seus pacientes desistem porque ninguém responde. Seus concorrentes estão agendando consultas às 3h da manhã. Você não.",
+    color: "text-blue-500"
+  },
+  {
+    icon: Bell,
+    title: "Lembretes que você DEVERIA ter",
+    description: "70% das suas faltas acontecem porque você não avisa os pacientes. R$ 5.000/mês indo embora por pura falta de organização.",
+    color: "text-primary"
+  },
+  {
+    icon: Calendar,
+    title: "Agenda que seus concorrentes têm",
+    description: "Enquanto você perde tempo organizando manualmente, eles já sincronizaram tudo e estão atendendo mais pacientes",
+    color: "text-purple-500"
+  },
+  {
+    icon: Users,
+    title: "Fila de Espera",
+    description: "Preencha horários vagos automaticamente quando pacientes cancelam ou faltam",
+    color: "text-orange-500"
+  },
+  {
+    icon: BarChart3,
+    title: "Relatórios Avançados",
+    description: "Métricas detalhadas sobre sua clínica, pacientes e performance financeira",
+    color: "text-red-500"
+  },
+  {
+    icon: Shield,
+    title: "Segurança Total",
+    description: "Dados protegidos com criptografia de ponta e backup automático diário",
+    color: "text-indigo-500"
+  }
+];
+
+const sectors = [
+  { title: "Clínicas médicas" },
+  { title: "Consultórios odontológicos" },
+  { title: "Estéticas e spas" },
+  { title: "Psicólogos e terapeutas" },
+  { title: "Fisioterapeutas" },
+  { title: "Oftalmologistas" },
+  { title: "Veterinárias" },
+  { title: "Nutricionistas" },
+  { title: "Fonoaudiólogos" },
+  { title: "Quiropraxistas" },
+  { title: "Acupunturistas" },
+  { title: "Massoterapeutas" }
+];
+
+
+const plans = [
+  {
+    id: "monthly",
+    name: "Mensal",
+    originalPrice: 297,
+    price: 197,
+    interval: "mês",
+    description: "Pagamento mensal",
+    features: allFeatures,
+    checkoutUrl: "https://checkout.escalepay.com/3004344"
+  },
+  {
+    id: "quarterly",
+    name: "Trimestral",
+    originalPrice: 891,
+    price: 497,
+    interval: "trimestre",
+    savings: "Economize 44%",
+    popular: true,
+    hot: true,
+    description: "3 meses de acesso",
+    features: allFeatures,
+    checkoutUrl: "https://checkout.escalepay.com/8383727"
+  },
+  {
+    id: "annual",
+    name: "Anual",
+    originalPrice: 3564,
+    price: 1497,
+    interval: "ano",
+    savings: "Economize 37%",
+    description: "12 meses de acesso",
+    features: allFeatures,
+    checkoutUrl: "https://checkout.escalepay.com/3059186"
+  }
+];
+
+const benefits = [
+  {
+    title: "Redução de Faltas",
+    value: "70%",
+    description: "R$ 5.000/mês que você está jogando no lixo por não usar o MedFlow",
+    icon: TrendingUp
+  },
+  {
+    title: "Economia de Tempo",
+    value: "15h/semana",
+    description: "Tempo que sua secretária desperdiça fazendo o que o sistema faz sozinho",
+    icon: Clock
+  },
+  {
+    title: "Aumento de Receita",
+    value: "+35%",
+    description: "Dinheiro que seus concorrentes estão ganhando enquanto você hesita",
+    icon: Target
+  },
+  {
+    title: "Satisfação",
+    value: "98%",
+    description: "Pacientes que fogem para quem responde rápido - você não está perdendo?",
+    icon: Award
+  }
+];
+
+const testimonials = [
+  {
+    name: "Dr. Carlos Silva",
+    username: "@carlos",
+    role: "Dentista - Clínica Sorriso Perfeito",
+    image: "https://randomuser.me/api/portraits/men/32.jpg",
+    text: "Recuperei R$ 18.000 em 3 meses. Quem não usa isso está literalmente jogando dinheiro fora. Não entendo como alguém ainda hesita.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dra. Ana Paula",
+    username: "@ana",
+    role: "Dermatologista - Clínica DermaCare",
+    image: "https://randomuser.me/api/portraits/women/44.jpg",
+    text: "Aumentei minha receita em 40% sem contratar ninguém. Quem ainda não usa está ficando para trás. É simples assim.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dr. Roberto Mendes",
+    username: "@roberto",
+    role: "Fisioterapeuta - Centro de Reabilitação",
+    image: "https://randomuser.me/api/portraits/men/52.jpg",
+    text: "Recuperei o investimento em 3 meses. Agora ganho R$ 5.000/mês a mais. Quem não usa está perdendo dinheiro todo dia.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dra. Mariana Costa",
+    username: "@mariana",
+    role: "Psicóloga - Clínica Bem Estar",
+    image: "https://randomuser.me/api/portraits/women/28.jpg",
+    text: "70% menos faltas = R$ 60.000/ano a mais no bolso. Quem ainda hesita não quer realmente resolver o problema.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dr. Paulo Santos",
+    username: "@paulo",
+    role: "Ortopedista - Clínica Ortopédica",
+    image: "https://randomuser.me/api/portraits/men/45.jpg",
+    text: "Economizei 20h/semana. Minha secretária agora faz o que realmente importa. Quem não usa está desperdiçando tempo e dinheiro.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dra. Juliana Lima",
+    username: "@juliana",
+    role: "Nutricionista - Clínica NutriVida",
+    image: "https://randomuser.me/api/portraits/women/35.jpg",
+    text: "O CRM integrado facilitou muito o acompanhamento dos pacientes. A fila de espera preenche automaticamente os horários vagos.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dr. Fernando Alves",
+    username: "@fernando",
+    role: "Cardiologista - Clínica CardioCare",
+    image: "https://randomuser.me/api/portraits/men/38.jpg",
+    text: "R$ 60.000 a mais no primeiro ano. Quem não usa isso está literalmente deixando dinheiro na mesa. Não faz sentido.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dra. Camila Rocha",
+    username: "@camila",
+    role: "Pediatra - Clínica PediCare",
+    image: "https://randomuser.me/api/portraits/women/42.jpg",
+    text: "Os pais adoram receber lembretes pelo WhatsApp. A experiência do paciente melhorou muito desde que implementei o MedFlow.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  },
+  {
+    name: "Dr. Lucas Oliveira",
+    username: "@lucas",
+    role: "Veterinário - Clínica PetCare",
+    image: "https://randomuser.me/api/portraits/men/41.jpg",
+    text: "Funciona perfeitamente para clínicas veterinárias também. Os tutores recebem lembretes e conseguem reagendar facilmente.",
+    country: "🇧🇷 Brasil",
+    rating: 5
+  }
+];
+
+const faqs = [
+  {
+    question: "Quanto tempo leva para configurar?",
+    answer: "Menos de 5 minutos! Se você demorar mais que isso, o problema não é o sistema. Você já começa a reduzir faltas no primeiro dia. Enquanto você inventa desculpas, seus concorrentes já configuraram e estão recuperando milhares de reais. Quanto mais você espera, mais dinheiro vai embora."
+  },
+  {
+    question: "Funciona com meu sistema atual?",
+    answer: "Sim! O MedFlow funciona de forma independente e se integra com Google Calendar. Você pode continuar usando seu sistema atual enquanto aproveita nossa automação."
+  },
+  {
+    question: "O sistema realmente funciona bem?",
+    answer: "Centenas de profissionais já recuperaram R$ 60.000/ano usando o MedFlow. Se você ainda tem dúvidas, talvez o problema seja você não querer resolver o problema. O sistema funciona 24/7, responde pacientes enquanto você dorme, e reduz faltas em 70%. Se isso não é suficiente, talvez você não queira realmente resolver o problema."
+  },
+  {
+    question: "Posso cancelar quando quiser?",
+    answer: "Sim! Não temos fidelidade. Mas vamos ser honestos: se você cancelar, você vai voltar a perder R$ 5.000/mês com faltas. A escolha é sua: continuar perdendo dinheiro ou resolver o problema de uma vez por todas."
+  },
+  {
+    question: "Quantos profissionais posso cadastrar?",
+    answer: "Ilimitados! Cada profissional tem sua própria agenda, horários de trabalho e pode ter seu próprio Google Calendar sincronizado."
+  },
+  {
+    question: "Meus dados estão seguros?",
+    answer: "Absolutamente! Utilizamos criptografia de ponta, backup automático diário e seguimos todas as normas de proteção de dados (LGPD). Seus dados nunca são compartilhados com terceiros."
+  }
+];
+
+function TestimonialCard({ img, name, username, text, country }: { img: string; name: string; username: string; text: string; country: string }) {
   return (
-    <div 
-      id="vturb-player-container"
-      dangerouslySetInnerHTML={{
-        __html: `<vturb-smartplayer id="vid-69487a1e798d3e9d452d5a4b" style="display: block; margin: 0 auto; width: 100%;"></vturb-smartplayer>`
-      }}
-    />
+    <Card className="w-50">
+      <CardContent>
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-9">
+            <AvatarImage src={img} alt={name} />
+            <AvatarFallback>{name[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <figcaption className="text-sm font-medium text-foreground flex items-center gap-1">
+              {name} <span className="text-xs">{country}</span>
+            </figcaption>
+            <p className="text-xs font-medium text-muted-foreground">{username}</p>
+          </div>
+        </div>
+        <blockquote className="mt-3 text-sm text-secondary-foreground">{text}</blockquote>
+      </CardContent>
+    </Card>
   );
 }
 
-function CountdownTimer() {
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  });
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date();
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
-      const diff = endOfDay.getTime() - now.getTime();
-      return {
-        hours: Math.floor(diff / (1000 * 60 * 60) % 24),
-        minutes: Math.floor(diff / (1000 * 60) % 60),
-        seconds: Math.floor(diff / 1000 % 60)
-      };
-    };
-    setTimeLeft(calculateTimeLeft());
-    const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  return <div className="flex items-center justify-center gap-1 sm:gap-2 text-lg sm:text-2xl md:text-3xl font-bold">
-      <div className="bg-background text-foreground px-2 sm:px-3 py-1 sm:py-2 rounded-lg min-w-[45px] sm:min-w-[60px] text-center">
-        {String(timeLeft.hours).padStart(2, '0')}h
-      </div>
-      <span>:</span>
-      <div className="bg-background text-foreground px-2 sm:px-3 py-1 sm:py-2 rounded-lg min-w-[45px] sm:min-w-[60px] text-center">
-        {String(timeLeft.minutes).padStart(2, '0')}m
-      </div>
-      <span>:</span>
-      <div className="bg-background text-foreground px-2 sm:px-3 py-1 sm:py-2 rounded-lg min-w-[45px] sm:min-w-[60px] text-center">
-        {String(timeLeft.seconds).padStart(2, '0')}s
-      </div>
-    </div>;
-}
-function TestimonialCarousel() {
-  const [current, setCurrent] = useState(0);
-  const next = () => setCurrent(prev => (prev + 1) % testimonials.length);
-  const prev = () => setCurrent(prev => (prev - 1 + testimonials.length) % testimonials.length);
-  useEffect(() => {
-    const timer = setInterval(next, 5000);
-    return () => clearInterval(timer);
-  }, []);
-  return <div className="relative max-w-4xl mx-auto px-2 sm:px-0">
-      <div className="overflow-hidden">
-        <div className="flex transition-transform duration-500 ease-in-out" style={{
-        transform: `translateX(-${current * 100}%)`
-      }}>
-          {testimonials.map((testimonial, index) => <div key={index} className="w-full flex-shrink-0 px-1 sm:px-4">
-              <Card className="bg-background border-2">
-                <CardContent className="pt-4 sm:pt-8 pb-4 sm:pb-6 px-4 sm:px-8">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                    <img src={testimonial.image} alt={testimonial.name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-primary" />
-                    <div>
-                      <h4 className="font-semibold text-sm sm:text-lg">{testimonial.name}</h4>
-                      <p className="text-xs sm:text-base text-muted-foreground">{testimonial.role}</p>
-                      <div className="flex gap-0.5 mt-1">
-                        {Array.from({
-                      length: testimonial.rating
-                    }).map((_, i) => <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />)}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm sm:text-lg italic text-muted-foreground">"{testimonial.text}"</p>
-                </CardContent>
-              </Card>
-            </div>)}
-        </div>
-      </div>
-
-      <button onClick={prev} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 sm:-translate-x-4 w-8 h-8 sm:w-10 sm:h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors z-10">
-        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-      </button>
-      <button onClick={next} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 sm:translate-x-4 w-8 h-8 sm:w-10 sm:h-10 bg-background border rounded-full flex items-center justify-center shadow-lg hover:bg-muted transition-colors z-10">
-        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-      </button>
-
-      <div className="flex justify-center gap-2 mt-4 sm:mt-6">
-        {testimonials.map((_, index) => <button key={index} onClick={() => setCurrent(index)} className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-muted-foreground/30'}`} />)}
-      </div>
-    </div>;
-}
-function FAQItem({
-  question,
-  answer
-}: {
-  question: string;
-  answer: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  return <div className="border rounded-lg overflow-hidden">
-      <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-4 text-left bg-background hover:bg-muted/50 transition-colors">
-        <span className="font-medium">{question}</span>
-        {isOpen ? <Minus className="w-5 h-5 text-muted-foreground flex-shrink-0" /> : <Plus className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
-      </button>
-      {isOpen && <div className="px-4 pb-4 text-muted-foreground">{answer}</div>}
-    </div>;
-}
-function SignupModal({
-  isOpen,
-  onClose,
-  selectedPlan
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  selectedPlan: typeof plans[0] | null;
-}) {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: ""
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      // Send data to webhook
-      const response = await fetch("https://aeilvaampnacbcrpkkyi.supabase.co/functions/v1/create-user-webhook", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          plan: selectedPlan?.id,
-          planName: selectedPlan?.name,
-          planPrice: selectedPlan?.price
-        })
-      });
-      if (response.ok) {
-        toast.success("Dados enviados! Redirecionando para pagamento...");
-        // You can redirect to payment page here
-        onClose();
-      } else {
-        toast.error("Erro ao processar. Tente novamente.");
-      }
-    } catch (error) {
-      toast.error("Erro de conexão. Tente novamente.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  return <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-primary">AgendaClin</span>
-            </div>
-          </div>
-          <DialogTitle className="text-xl">Crie sua conta no AgendaClin</DialogTitle>
-          <DialogDescription>
-            Preencha seus dados para continuar com a assinatura
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome completo</Label>
-            <Input id="name" placeholder="Seu nome" value={formData.name} onChange={e => setFormData({
-            ...formData,
-            name: e.target.value
-          })} className="border-primary/30 focus:border-primary" />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="seu@email.com" value={formData.email} onChange={e => setFormData({
-            ...formData,
-            email: e.target.value
-          })} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
-            <Input id="phone" placeholder="(00) 00000-0000" value={formData.phone} onChange={e => setFormData({
-            ...formData,
-            phone: e.target.value
-          })} />
-          </div>
-
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" size="lg" disabled={isLoading}>
-            {isLoading ? "Processando..." : "Continuar para Pagamento"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>;
-}
-function SimpleLogo({
-  size = "md"
-}: {
-  size?: "sm" | "md" | "lg";
-}) {
-  const sizes = {
-    sm: {
-      icon: "w-8 h-8",
-      text: "text-lg"
-    },
-    md: {
-      icon: "w-10 h-10",
-      text: "text-xl"
-    },
-    lg: {
-      icon: "w-12 h-12",
-      text: "text-2xl"
-    }
-  };
-  return <div className="flex items-center gap-2">
-      <div className={`${sizes[size].icon} rounded-lg bg-primary flex items-center justify-center`}>
-        <Calendar className="w-2/3 h-2/3 text-primary-foreground" />
-      </div>
-      <span className={`${sizes[size].text} font-bold text-primary`}>AgendaClin</span>
-    </div>;
-}
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<typeof plans[0] | null>(null);
-  const { formatWithSymbol, config, currency } = useCurrency();
-  
-  const handleSelectPlan = (plan: typeof plans[0]) => {
-    // Redirecionar diretamente para o checkout do plano selecionado
-    window.location.href = plan.checkoutUrl;
+  const { formatWithSymbol } = useCurrency();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const scrollToFeatures = () => {
+    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+    setMobileMenuOpen(false);
   };
+
   const scrollToPricing = () => {
-    document.getElementById('pricing')?.scrollIntoView({
-      behavior: 'smooth'
-    });
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+    setMobileMenuOpen(false);
   };
-  return <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <SimpleLogo size="sm" />
-            <div className="flex items-center gap-2 sm:gap-4">
-              <CurrencySelector variant="minimal" />
-              <Button variant="ghost" onClick={scrollToPricing} className="hidden sm:inline-flex text-sm">
+
+  return (
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Shader Background */}
+      <ShaderBackground />
+      
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="flex h-14 sm:h-16 items-center justify-between">
+            <Logo size="md" className="text-primary" />
+            <div className="hidden md:flex items-center gap-4 lg:gap-6">
+              <button onClick={scrollToFeatures} className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors">
+                Funcionalidades
+              </button>
+              <button onClick={scrollToPricing} className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors">
                 Planos
+              </button>
+              <Button variant="ghost" onClick={() => navigate('/blog')} className="text-sm font-bold">
+                Blog
               </Button>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-3 sm:px-4" onClick={() => navigate('/login')}>
+              <Button variant="ghost" onClick={() => navigate('/help')} className="text-sm font-bold">
+                Ajuda
+              </Button>
+              <CurrencySelector variant="minimal" />
+              <Button variant="ghost" onClick={() => navigate('/login')} className="font-bold">
                 Entrar
               </Button>
+              <Button onClick={() => navigate('/register')} className="font-bold">
+                Começar Agora
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            <div className="md:hidden flex items-center gap-2">
+              <CurrencySelector variant="minimal" />
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Abrir menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                  <SheetHeader>
+                    <SheetTitle className="text-left">Menu</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6 flex flex-col gap-4">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-left font-semibold"
+                      onClick={scrollToFeatures}
+                    >
+                      Funcionalidades
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-left font-semibold"
+                      onClick={scrollToPricing}
+                    >
+                      Planos
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-left font-semibold"
+                      onClick={() => {
+                        navigate('/blog');
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Blog
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-left font-semibold"
+                      onClick={() => {
+                        navigate('/help');
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Ajuda
+                    </Button>
+                    <div className="border-t pt-4 mt-4">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-left font-semibold mb-2"
+                        onClick={() => {
+                          navigate('/login');
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        Entrar
+                      </Button>
+                      <Button
+                        className="w-full font-bold"
+                        onClick={() => {
+                          navigate('/register');
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        Começar Agora
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
-      </header>
-
-      {/* Discount Banner */}
-      
+      </nav>
 
       {/* Hero Section */}
-      <section className="py-8 sm:py-12 md:py-20 overflow-hidden">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="max-w-4xl mx-auto text-center">
-            <Badge variant="secondary" className="mb-4 sm:mb-6 text-xs sm:text-sm">
-              <Sparkles className="w-3 h-3 mr-1" />
-              Automação inteligente para clínicas
-            </Badge>
+      <section className="relative overflow-hidden py-12 md:py-20 lg:py-32 bg-background">
+        <div className="container relative mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Content */}
+            <div className="text-left">
+              <Badge className="mb-4 md:mb-6 bg-destructive/20 text-destructive hover:bg-destructive/30 text-xs md:text-sm px-3 py-1 border-2 border-destructive/50 inline-block font-bold animate-pulse">
+                <Flame className="inline mr-1 h-3 w-3" />
+                <span className="hidden sm:inline">⚠️ VOCÊ ESTÁ PERDENDO R$ 167/DIA</span>
+                <span className="sm:hidden">⚠️ PERDENDO R$ 167/DIA</span>
+              </Badge>
+              
+              <h1 className="mb-4 md:mb-6 text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-tight text-foreground">
+                Você está{" "}
+                <span className="text-primary">
+                  perdendo R$ 5.000/mês
+                </span>{" "}
+                enquanto lê isso
+              </h1>
+              
+              <p className="mb-6 md:mb-8 text-lg sm:text-xl md:text-xl lg:text-2xl text-muted-foreground leading-relaxed font-semibold">
+                Enquanto você hesita, seus concorrentes já estão recuperando R$ 60.000/ano em receita perdida. <span className="text-primary font-bold">A cada dia que passa, você perde mais dinheiro.</span>
+              </p>
 
-            <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black tracking-tight mb-4 sm:mb-6 leading-tight">
-              O segredo de clínicas que faturam +100MIL por mês{" "}
-              <span className="text-primary">com a mesma quantidade de pacientes</span>
-            </h1>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-start">
+                <Button size="lg" className="text-sm sm:text-base md:text-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 w-auto sm:w-auto bg-primary hover:bg-primary/90 shadow-lg shadow-primary/50" onClick={() => navigate('/register')}>
+                  PARAR DE PERDER DINHEIRO AGORA
+                  <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
+                </Button>
+              </div>
 
-            <p className="text-sm sm:text-base md:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-3xl mx-auto px-2">
-              Chega de{" "}
-              <span className="font-semibold text-foreground">pacientes que não aparecem</span>,{" "}
-              <span className="font-semibold text-foreground">WhatsApp tocando fora de hora</span> e{" "}
-              <span className="font-semibold text-foreground">funcionários perdendo tempo com ligações</span>.
-            </p>
+              <div className="mt-6 md:mt-8 p-4 md:p-6 bg-destructive/10 border-2 border-destructive/30 rounded-lg">
+                <p className="text-sm md:text-base font-bold text-destructive mb-2">
+                  ⚠️ ATENÇÃO: A cada dia sem o MedFlow, você perde:
+                </p>
+                <ul className="text-xs md:text-sm text-foreground space-y-1 font-semibold">
+                  <li>• R$ 167 em receita perdida (por dia)</li>
+                  <li>• 2-3 pacientes que desistem por falta de resposta rápida</li>
+                  <li>• 5 horas da sua secretária fazendo trabalho manual</li>
+                </ul>
+              </div>
+
+              <div className="mt-6 md:mt-8 flex flex-col sm:flex-row flex-wrap items-start gap-4 md:gap-8 text-xs sm:text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
+                  <span className="font-bold">Teste grátis - Sem cartão</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
+                  <span className="font-bold">Resultados em 24h</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0" />
+                  <span className="font-bold">Cancele quando quiser</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Content - 3D Scene (Desktop only) */}
+            <div className="hidden lg:block relative h-[400px] lg:h-[500px] w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
+              <Spotlight
+                className="-top-40 left-0 md:left-60 md:-top-20"
+                fill="hsl(210, 100%, 40%)"
+              />
+              <div className="relative w-full h-full">
+                <SplineScene 
+                  scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+                  className="w-full h-full"
+                />
+                {/* Blue overlay to tint the 3D scene */}
+                <div className="absolute inset-0 bg-primary/10 mix-blend-multiply pointer-events-none"></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* VSL Section */}
-      <section className="pb-10 sm:pb-16">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="max-w-4xl mx-auto">
-            <div className="rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
-              <VturbPlayer />
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4 sm:mt-6">
-              <Button size="lg" className="gap-2 text-sm sm:text-base px-4 sm:px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" onClick={scrollToPricing}>
-                Ver Planos
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-              <Button size="lg" variant="outline" className="gap-2 text-sm sm:text-base px-4 sm:px-8 font-semibold" onClick={() => navigate('/register')}>
-                Teste Grátis 3 Dias
-              </Button>
-            </div>
+      {/* Benefits Stats */}
+      <section className="border-y bg-background py-8 md:py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 gap-4 md:gap-6 md:grid-cols-4">
+            {benefits.map((benefit, index) => (
+              <div key={index} className="text-center px-2">
+                <div className="mb-2 inline-flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-full bg-primary/10">
+                  <benefit.icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+                </div>
+                <div className="mb-1 text-2xl md:text-3xl font-bold text-primary">{benefit.value}</div>
+                <div className="mb-1 text-xs md:text-sm font-semibold leading-tight">{benefit.title}</div>
+                <div className="text-[10px] md:text-xs text-muted-foreground leading-tight">{benefit.description}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-
-      {/* How it Works */}
-      <section className="py-10 sm:py-16 bg-muted/30">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
-              100% Online e Automatizado
+      {/* Features Section */}
+      <section id="features" className="py-20 md:py-32 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              O que você está perdendo por não ter isso?
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
-              Acesse de qualquer lugar, a qualquer hora. Sua clínica no piloto automático.
+            <p className="text-lg text-muted-foreground font-semibold">
+              Enquanto você continua perdendo pacientes e dinheiro, seus concorrentes já estão usando essas ferramentas para dominar o mercado
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl sm:text-2xl font-bold mx-auto mb-4 sm:mb-6 shadow-lg">
-                1
-              </div>
-              <h3 className="text-base sm:text-xl font-semibold mb-2">Conecte seu WhatsApp</h3>
-              <p className="text-sm text-muted-foreground">Em menos de 5 minutos você conecta sua conta</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl sm:text-2xl font-bold mx-auto mb-4 sm:mb-6 shadow-lg">
-                2
-              </div>
-              <h3 className="text-base sm:text-xl font-semibold mb-2">IA assume o atendimento</h3>
-              <p className="text-sm text-muted-foreground">Nossa IA responde, agenda e confirma consultas automaticamente</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl sm:text-2xl font-bold mx-auto mb-4 sm:mb-6 shadow-lg">
-                3
-              </div>
-              <h3 className="text-base sm:text-xl font-semibold mb-2">Foque no que importa</h3>
-              <p className="text-sm text-muted-foreground">Você atende seus pacientes enquanto a tecnologia cuida do resto</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-10 sm:py-16">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
-              Funcionalidades Completas
-            </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
-              Tudo o que você precisa para gerenciar sua clínica em um só lugar
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
-            {features.map((feature, index) => <Card key={index} className="bg-background hover:shadow-lg transition-shadow">
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                    <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12">
+            {features.map((feature, index) => (
+              <Card key={index} className="group border border-border transition-all hover:border-primary hover:shadow-md bg-background">
+                <CardHeader>
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                    <feature.icon className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="text-base sm:text-lg">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm">{feature.description}</CardDescription>
+                  <CardTitle className="text-xl text-foreground">{feature.title}</CardTitle>
+                  <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
                 </CardHeader>
-              </Card>)}
+              </Card>
+            ))}
+          </div>
+
+          {/* All Features List */}
+          <div className="mx-auto max-w-4xl">
+            <Card className="border border-border bg-background">
+              <CardHeader>
+                <CardTitle className="text-2xl text-center">Tudo que você NÃO tem (e seus concorrentes têm)</CardTitle>
+                <CardDescription className="text-center font-semibold">
+                  Todas essas funcionalidades estão disponíveis em todos os planos. <span className="text-primary">Enquanto você hesita, seus concorrentes já estão usando tudo isso.</span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {allFeatures.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                      <span className="text-sm">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Target Audience */}
-      <section className="py-10 sm:py-16 bg-muted/30">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
-              Para quem é o AgendaClin?
+      {/* Sectors Section */}
+      <section className="bg-background py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Você se reconhece aqui?
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
-              Ideal para qualquer profissional de saúde que quer automatizar agendamentos
+            <p className="text-lg text-muted-foreground font-semibold">
+              Se você ainda perde R$ 5.000/mês com faltas, gasta horas no telefone fazendo o que um sistema faz sozinho, ou está vendo seus concorrentes crescerem enquanto você fica para trás - <span className="text-primary font-bold">o problema é você, não o mercado</span>
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 max-w-5xl mx-auto">
-            {targetAudience.map((item, index) => <div key={index} className="bg-background rounded-xl p-4 sm:p-6 text-center hover:shadow-lg transition-shadow border">
-                <span className="text-xs sm:text-sm font-medium">{item.title}</span>
-              </div>)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+            {sectors.map((sector, index) => (
+              <Card key={index} className="text-center hover:border-primary hover:shadow-lg transition-all border border-border">
+                <CardContent className="p-6">
+                  <span className="text-sm font-medium">{sector.title}</span>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials Carousel */}
-      <section className="py-10 sm:py-16">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
-              O Que Nossos Clientes Dizem
+      {/* How It Works */}
+      <section className="bg-background py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-foreground">
+              É mais fácil do que você pensa (e você está complicando)
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
-              Profissionais que já transformaram suas clínicas
+            <p className="text-lg text-muted-foreground font-semibold">
+              Enquanto você fica inventando desculpas, outros profissionais já configuraram em 5 minutos e estão recuperando milhares de reais. <span className="text-primary font-bold">Você vai continuar perdendo dinheiro por preguiça?</span>
             </p>
           </div>
 
-          <TestimonialCarousel />
+          <div className="grid gap-8 md:grid-cols-3">
+            {[
+              {
+                step: "01",
+                title: "Conecte seu WhatsApp (2 minutos)",
+                description: "Escaneie o QR Code. É isso. Se você não consegue fazer isso, talvez o problema seja outro."
+              },
+              {
+                step: "02",
+                title: "Configure sua agenda (2 minutos)",
+                description: "Sincronize com Google Calendar ou configure manualmente. Seus concorrentes já fizeram isso há meses."
+              },
+              {
+                step: "03",
+                title: "Pronto! Agora você para de perder dinheiro",
+                description: "O sistema trabalha 24/7 enquanto você dorme. Enquanto você hesitava, outros já recuperaram R$ 60.000/ano. Você ainda vai continuar perdendo?"
+              }
+            ].map((item, index) => (
+              <div key={index} className="relative">
+                <Card className="h-full border border-border bg-background">
+                  <CardHeader>
+                    <div className="mb-4 text-5xl font-bold text-primary/20">{item.step}</div>
+                    <CardTitle className="text-2xl text-foreground">{item.title}</CardTitle>
+                    <CardDescription className="text-base text-muted-foreground">{item.description}</CardDescription>
+                  </CardHeader>
+                </Card>
+                {index < 2 && (
+                  <div className="absolute -right-4 top-1/2 hidden -translate-y-1/2 md:block">
+                    <ChevronRight className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Urgency Banner */}
-      <section className="py-8 sm:py-12 bg-destructive text-destructive-foreground">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto text-center">
-          <h3 className="text-lg sm:text-xl md:text-3xl font-bold mb-2">
-            OFERTA POR TEMPO LIMITADO
-          </h3>
-          <p className="text-sm sm:text-lg mb-4 sm:mb-6 opacity-90">
-            Preço promocional encerra em:
-          </p>
-          <CountdownTimer />
-          <Button size="lg" variant="secondary" className="mt-4 sm:mt-6 gap-2 font-semibold text-sm sm:text-base w-full sm:w-auto" onClick={scrollToPricing}>
-            Garantir minha vaga
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </section>
+      {/* Testimonials */}
+      <section className="py-20 md:py-32 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Enquanto você hesita, eles já recuperaram R$ 60.000/ano
+            </h2>
+            <p className="text-lg text-muted-foreground font-semibold">
+              Profissionais que não inventaram desculpas e simplesmente começaram. <span className="text-primary font-bold">Você vai continuar sendo o único que perde dinheiro?</span>
+            </p>
+          </div>
 
-      {/* What's Included */}
-      <section className="py-10 sm:py-16">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-3 sm:mb-4">
-            Incluso em todos os planos
-          </h2>
-          <p className="text-center text-sm sm:text-base text-muted-foreground mb-6 sm:mb-10 max-w-2xl mx-auto px-2">
-            Acesso completo a todas as funcionalidades, sem surpresas
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-5xl mx-auto">
-            {allFeatures.map((feature, index) => <div key={index} className="flex items-center gap-2 sm:gap-3 bg-muted/50 p-3 sm:p-4 rounded-xl">
-                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
-                <span className="text-xs sm:text-sm font-medium">{feature}</span>
-              </div>)}
+          <div className="mx-auto max-w-6xl">
+            <div className="border border-border rounded-lg relative flex h-[500px] md:h-[600px] w-full flex-row items-center justify-center overflow-hidden gap-1.5 [perspective:300px] bg-background">
+              <div
+                className="flex flex-row items-center gap-4"
+                style={{
+                  transform:
+                    'translateX(-100px) translateY(0px) translateZ(-100px) rotateX(20deg) rotateY(-10deg) rotateZ(20deg)',
+                }}
+              >
+                {/* Vertical Marquee (downwards) */}
+                <Marquee vertical pauseOnHover repeat={3} className="[--duration:40s]">
+                  {testimonials.map((review) => (
+                    <TestimonialCard 
+                      key={review.username} 
+                      img={review.image}
+                      name={review.name}
+                      username={review.username}
+                      text={review.text}
+                      country={review.country}
+                    />
+                  ))}
+                </Marquee>
+                {/* Vertical Marquee (upwards) */}
+                <Marquee vertical pauseOnHover reverse repeat={3} className="[--duration:40s]">
+                  {testimonials.map((review) => (
+                    <TestimonialCard 
+                      key={review.username} 
+                      img={review.image}
+                      name={review.name}
+                      username={review.username}
+                      text={review.text}
+                      country={review.country}
+                    />
+                  ))}
+                </Marquee>
+                {/* Vertical Marquee (downwards) */}
+                <Marquee vertical pauseOnHover repeat={3} className="[--duration:40s]">
+                  {testimonials.map((review) => (
+                    <TestimonialCard 
+                      key={review.username} 
+                      img={review.image}
+                      name={review.name}
+                      username={review.username}
+                      text={review.text}
+                      country={review.country}
+                    />
+                  ))}
+                </Marquee>
+                {/* Vertical Marquee (upwards) */}
+                <Marquee vertical pauseOnHover reverse repeat={3} className="[--duration:40s]">
+                  {testimonials.map((review) => (
+                    <TestimonialCard 
+                      key={review.username} 
+                      img={review.image}
+                      name={review.name}
+                      username={review.username}
+                      text={review.text}
+                      country={review.country}
+                    />
+                  ))}
+                </Marquee>
+                {/* Gradient overlays for vertical marquee */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-background"></div>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-background"></div>
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-10 sm:py-16 bg-muted/30">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
-              Escolha seu plano e comece agora
-            </h2>
-            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
-              ⚡Todos os planos estão com desconto nesse momento⚡
+      <section id="pricing" className="py-20 md:py-32 bg-background">
+        <Pricing
+          plans={plans.map((plan) => {
+            // Calcular preço anual (20% desconto)
+            const monthlyPrice = plan.price;
+            const yearlyPrice = plan.id === 'annual' 
+              ? plan.price 
+              : Math.floor(monthlyPrice * 12 * 0.8);
+            
+            return {
+              name: plan.name,
+              price: monthlyPrice.toString(),
+              yearlyPrice: yearlyPrice.toString(),
+              period: plan.interval,
+              features: plan.features.slice(0, 10),
+              description: plan.description,
+              buttonText: `Assinar ${plan.name}`,
+              href: plan.checkoutUrl,
+              isPopular: plan.popular || false,
+            };
+          })}
+          title="Pare de perder dinheiro - escolha seu plano AGORA"
+          description="Todos os planos incluem todas as funcionalidades - sem pegadinhas, sem surpresas.\nA cada dia que você espera, perde mais R$ 167. Quanto mais você demora, mais dinheiro vai embora."
+        />
+        
+        <div className="container mx-auto px-4 mt-8 text-center">
+          <div className="mb-6 p-4 bg-destructive/10 border-2 border-destructive/30 rounded-lg max-w-2xl mx-auto">
+            <p className="text-base font-bold text-destructive mb-2">
+              ⏰ A CADA HORA QUE VOCÊ ESPERA, PERDE MAIS R$ 7
+            </p>
+            <p className="text-sm text-foreground font-semibold">
+              Enquanto você pensa, seus concorrentes já estão recuperando milhares de reais. Quanto mais você demora, mais dinheiro vai embora.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 max-w-5xl mx-auto">
-            {plans.map(plan => <Card key={plan.id} className={`relative ${plan.popular ? 'border-primary shadow-xl ring-2 ring-primary/20 md:scale-105 z-10' : ''}`}>
-                {plan.hot && <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-destructive text-destructive-foreground shadow-lg gap-1 text-xs">
-                      <Flame className="w-3 h-3" />
-                      Mais Escolhido
-                    </Badge>
-                  </div>}
-                <CardHeader className="text-center pb-2 p-4 sm:p-6">
-                  <CardTitle className="text-xl sm:text-2xl">{plan.name}</CardTitle>
-                  <CardDescription className="text-sm">{plan.description}</CardDescription>
-                  <div className="py-3 sm:py-4">
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <span className="text-sm sm:text-lg text-muted-foreground line-through">
-                        {formatWithSymbol(plan.originalPrice)}
-                      </span>
-                    </div>
-                    <span className="text-3xl sm:text-4xl font-bold text-primary">{formatWithSymbol(plan.price)}</span>
-                    <span className="text-sm text-muted-foreground">/{plan.interval}</span>
-                  </div>
-                  {plan.savings && <Badge variant="secondary" className={`text-xs ${plan.id === 'annual' ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'}`}>
-                      {plan.savings}
-                    </Badge>}
-                </CardHeader>
-                <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
-                  <div className="grid grid-cols-1 gap-1">
-                    {plan.features.map((feature, idx) => <div key={idx} className="flex items-center gap-1.5 text-xs">
-                        <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0" />
-                        <span className="truncate">{feature}</span>
-                      </div>)}
-                  </div>
-                  <Button className={`w-full text-sm sm:text-base ${plan.popular ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`} size="lg" variant={plan.popular ? "default" : "outline"} onClick={() => handleSelectPlan(plan)}>
-                    Quero Este Plano
-                  </Button>
-                </CardContent>
-              </Card>)}
+          <p className="text-sm text-muted-foreground mb-4 font-semibold">
+            Todos os planos incluem teste grátis de 3 dias - <span className="text-primary">sem desculpas, sem complicação</span>
+          </p>
+          <Button
+            size="lg"
+            className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/50 font-bold text-lg px-8 py-6"
+            onClick={() => navigate('/register')}
+          >
+            PARAR DE PERDER DINHEIRO AGORA - TESTE GRÁTIS
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+          <p className="mt-4 text-xs text-muted-foreground font-semibold">
+            ⚠️ A cada minuto que você espera, perde mais R$ 0,12. Isso soma R$ 5.000/mês. <span className="text-destructive">Você realmente vai continuar perdendo?</span>
+          </p>
+        </div>
+      </section>
+
+      {/* Security & Trust Section */}
+      <section className="py-20 md:py-32 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Segurança e Confiança
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Seus dados protegidos com os mais altos padrões de segurança
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-6 mb-8">
+            <SecurityBadges />
+            <ComplianceBadges />
+          </div>
+          <div className="text-center">
+            <Button variant="outline" onClick={() => navigate('/security')}>
+              Saiba mais sobre segurança
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Resources Section */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Recursos e Aprendizado
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Aprenda mais sobre gestão de clínicas e aproveite ao máximo o MedFlow
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <Card className="cursor-pointer hover:border-primary hover:shadow-lg transition-all" onClick={() => navigate('/blog')}>
+              <CardHeader>
+                <BookOpen className="h-10 w-10 text-primary mb-4" />
+                <CardTitle className="text-foreground">Blog</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Artigos, dicas e estratégias para transformar sua clínica
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="ghost" className="w-full">
+                  Ler Artigos <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all border border-border bg-background" onClick={() => navigate('/help')}>
+              <CardHeader>
+                <HelpCircle className="h-10 w-10 text-primary mb-4" />
+                <CardTitle className="text-foreground">Central de Ajuda</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Encontre respostas rápidas e tutoriais passo a passo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="ghost" className="w-full">
+                  Acessar Ajuda <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all border border-border bg-background" onClick={() => navigate('/case-studies')}>
+              <CardHeader>
+                <Target className="h-10 w-10 text-primary mb-4" />
+                <CardTitle className="text-foreground">Case Studies</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Veja como outras clínicas estão transformando resultados
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="ghost" className="w-full">
+                  Ver Cases <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-10 sm:py-16">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">
-              Perguntas Frequentes
+      <section className="py-20 md:py-32 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Perguntas frequentes
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2">
-              Tire suas dúvidas sobre o AgendaClin
+            <p className="text-lg text-muted-foreground">
+              Tire suas dúvidas sobre o MedFlow
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Não encontrou sua resposta? <button onClick={() => navigate('/help')} className="text-primary hover:underline">Visite nossa Central de Ajuda</button>
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto space-y-2 sm:space-y-3">
-            {faqs.map((faq, index) => <FAQItem key={index} question={faq.question} answer={faq.answer} />)}
+          <div className="mx-auto max-w-3xl space-y-4">
+            {faqs.map((faq, index) => (
+              <Card key={index} className="border border-border bg-background">
+                <CardHeader>
+                  <CardTitle className="text-left text-foreground">{faq.question}</CardTitle>
+                  <CardDescription className="text-base text-left text-muted-foreground">{faq.answer}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-10 sm:py-16 bg-primary text-primary-foreground">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
-            Sua agenda no piloto automático
-          </h2>
-          <p className="text-sm sm:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 px-2">
-            Enquanto você descansa, a IA continua agendando e atendendo seus pacientes
-          </p>
-          <Button size="lg" variant="secondary" className="gap-2 font-semibold text-sm sm:text-base w-full sm:w-auto" onClick={scrollToPricing}>
-            Quero ter acesso
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+      <section className="border-t bg-background py-20">
+        <div className="container mx-auto px-4">
+          <Card className="border-2 border-destructive/50 bg-gradient-to-br from-destructive/10 to-destructive/5">
+            <CardContent className="p-12 text-center">
+              <div className="mb-6 inline-block px-4 py-2 bg-destructive/20 border-2 border-destructive/50 rounded-lg">
+                <p className="text-sm font-bold text-destructive animate-pulse">
+                  ⚠️ VOCÊ ESTÁ PERDENDO R$ 167/DIA ENQUANTO LÊ ISSO
+                </p>
+              </div>
+              <h2 className="mb-4 text-3xl font-bold sm:text-4xl text-foreground">
+                Última chance: você vai continuar perdendo R$ 5.000/mês?
+              </h2>
+              <p className="mb-6 text-lg text-muted-foreground font-semibold">
+                Centenas de profissionais já recuperaram R$ 60.000/ano. <span className="text-destructive font-bold">Você vai ser o único que continua perdendo dinheiro por pura preguiça?</span>
+              </p>
+              <div className="mb-6 p-4 bg-background/80 border border-destructive/30 rounded-lg max-w-md mx-auto">
+                <p className="text-sm font-bold text-foreground mb-2">
+                  A cada minuto que você espera:
+                </p>
+                <ul className="text-xs text-left space-y-1 text-muted-foreground font-semibold">
+                  <li>• Perde R$ 0,12 (isso soma R$ 5.000/mês)</li>
+                  <li>• Seus concorrentes agendam mais consultas</li>
+                  <li>• Seus pacientes desistem por falta de resposta</li>
+                </ul>
+              </div>
+              <Button size="lg" className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/50 font-bold" onClick={() => navigate('/register')}>
+                PARAR DE PERDER DINHEIRO AGORA - TESTE GRÁTIS
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <p className="mt-4 text-xs text-muted-foreground font-semibold">
+                Sem cartão de crédito • Resultados em 24h • Cancele quando quiser
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-6 sm:py-8 bg-background">
-        <div className="w-full px-3 sm:px-4 md:container md:mx-auto">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <SimpleLogo size="sm" />
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              AgendaClin — o sistema que transforma desorganização em lucro
-            </p>
-            <div className="flex gap-4 text-xs sm:text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Termos</a>
-              <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
+      <footer className="border-t py-12 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="grid gap-8 md:grid-cols-5">
+            <div className="md:col-span-2">
+              <Logo size="md" className="mb-4 text-primary" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Sistema de gestão para clínicas e consultórios. 
+                Automatize agendamentos, reduza faltas e aumente sua receita.
+              </p>
+              <div className="flex gap-4">
+                <Button variant="outline" size="sm" onClick={() => navigate('/register')}>
+                  Teste Grátis
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/contact')}>
+                  Contato
+                </Button>
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-4 font-semibold">Produto</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={scrollToFeatures} className="hover:text-foreground transition-colors">Funcionalidades</button></li>
+                <li><button onClick={scrollToPricing} className="hover:text-foreground transition-colors">Planos</button></li>
+                <li><button onClick={() => navigate('/compare')} className="hover:text-foreground transition-colors">Comparar</button></li>
+                <li><button onClick={() => navigate('/case-studies')} className="hover:text-foreground transition-colors">Case Studies</button></li>
+                <li><button onClick={() => navigate('/login')} className="hover:text-foreground transition-colors">Login</button></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-4 font-semibold">Recursos</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={() => navigate('/blog')} className="hover:text-foreground transition-colors">Blog</button></li>
+                <li><button onClick={() => navigate('/help')} className="hover:text-foreground transition-colors">Central de Ajuda</button></li>
+                <li><button onClick={() => navigate('/contact')} className="hover:text-foreground transition-colors">Contato</button></li>
+                <li><button onClick={() => navigate('/security')} className="hover:text-foreground transition-colors">Segurança</button></li>
+                <li><button onClick={() => navigate('/status')} className="hover:text-foreground transition-colors">Status</button></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-4 font-semibold">Empresa</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={() => navigate('/about')} className="hover:text-foreground transition-colors">Sobre Nós</button></li>
+                <li><button onClick={() => navigate('/privacy')} className="hover:text-foreground transition-colors">Privacidade</button></li>
+                <li><button onClick={() => navigate('/terms')} className="hover:text-foreground transition-colors">Termos</button></li>
+                <li><button onClick={() => navigate('/security')} className="hover:text-foreground transition-colors">LGPD</button></li>
+              </ul>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            © {new Date().getFullYear()} AgendaClin. Todos os direitos reservados.
-          </p>
+          <div className="mt-8 border-t pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-muted-foreground text-center md:text-left">
+                © {new Date().getFullYear()} MedFlow. Todos os direitos reservados.
+              </p>
+              <div className="flex gap-6 text-sm text-muted-foreground">
+                <button onClick={() => navigate('/privacy')} className="hover:text-foreground transition-colors">Privacidade</button>
+                <button onClick={() => navigate('/terms')} className="hover:text-foreground transition-colors">Termos</button>
+                <button onClick={() => navigate('/security')} className="hover:text-foreground transition-colors">Segurança</button>
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
-
-      {/* Signup Modal */}
-      <SignupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} selectedPlan={selectedPlan} />
-    </div>;
+    </div>
+  );
 }

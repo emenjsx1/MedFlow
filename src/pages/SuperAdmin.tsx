@@ -132,6 +132,7 @@ export default function SuperAdmin() {
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [activeTab, setActiveTab] = useState('tenants');
+  const [userSearchEmail, setUserSearchEmail] = useState('');
 
   useEffect(() => {
     if (!authLoading && !isSuperAdmin) {
@@ -744,6 +745,24 @@ export default function SuperAdmin() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Buscar por email (ex: emenjoseph7@gmail.com)"
+                      value={userSearchEmail}
+                      onChange={(e) => setUserSearchEmail(e.target.value)}
+                      className="max-w-md"
+                    />
+                    {userSearchEmail && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setUserSearchEmail('')}
+                      >
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
+                </div>
                 <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -756,7 +775,12 @@ export default function SuperAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {profiles.map((profile) => (
+                      {profiles
+                        .filter((profile) => 
+                          !userSearchEmail || 
+                          profile.email?.toLowerCase().includes(userSearchEmail.toLowerCase())
+                        )
+                        .map((profile) => (
                         <TableRow key={profile.id}>
                           <TableCell className="font-medium">{profile.full_name}</TableCell>
                           <TableCell>{profile.email}</TableCell>
@@ -767,10 +791,15 @@ export default function SuperAdmin() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {profiles.length === 0 && (
+                      {profiles.filter((profile) => 
+                        !userSearchEmail || 
+                        profile.email?.toLowerCase().includes(userSearchEmail.toLowerCase())
+                      ).length === 0 && (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            Nenhum usuário encontrado
+                            {userSearchEmail 
+                              ? `Nenhum usuário encontrado com o email "${userSearchEmail}"`
+                              : 'Nenhum usuário encontrado'}
                           </TableCell>
                         </TableRow>
                       )}

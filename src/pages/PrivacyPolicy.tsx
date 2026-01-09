@@ -22,7 +22,7 @@ const PrivacyPolicy = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">1. Introdução</h2>
             <p className="text-muted-foreground leading-relaxed">
-              A AgendaClin ("nós", "nosso" ou "nossa") opera a plataforma de gestão de agendamentos para clínicas 
+              A MedFlow ("nós", "nosso" ou "nossa") opera a plataforma de gestão de agendamentos para clínicas 
               e consultórios médicos. Esta Política de Privacidade descreve como coletamos, usamos, armazenamos 
               e protegemos suas informações pessoais quando você utiliza nossos serviços.
             </p>
@@ -118,8 +118,8 @@ const PrivacyPolicy = () => {
               Para dúvidas sobre esta Política de Privacidade ou para exercer seus direitos, entre em contato:
             </p>
             <p className="text-muted-foreground mt-4">
-              <strong>E-mail:</strong> privacidade@agendaclin.com<br />
-              <strong>Responsável pela Proteção de Dados:</strong> AgendaClin LTDA
+              <strong>E-mail:</strong> privacidade@medflow.app<br />
+              <strong>Responsável pela Proteção de Dados:</strong> MedFlow LTDA
             </p>
           </section>
         </div>

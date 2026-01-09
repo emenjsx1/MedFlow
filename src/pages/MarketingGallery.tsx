@@ -23,7 +23,7 @@ const marketingImages: MarketingImage[] = [
   {
     id: "1",
     name: "Post Instagram - Dashboard",
-    description: "Imagem quadrada mostrando o dashboard do AgendaClin",
+    description: "Imagem quadrada mostrando o dashboard do MedFlow",
     dimensions: "1024 x 1024",
     platform: "Instagram Feed",
     src: instagramPostDashboard,

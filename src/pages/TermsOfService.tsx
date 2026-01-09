@@ -22,7 +22,7 @@ const TermsOfService = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">1. Aceitação dos Termos</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Ao acessar ou usar a plataforma AgendaClin, você concorda em cumprir estes Termos de Serviço. 
+              Ao acessar ou usar a plataforma MedFlow, você concorda em cumprir estes Termos de Serviço. 
               Se você não concordar com qualquer parte destes termos, não poderá acessar ou usar nossos serviços.
             </p>
           </section>
@@ -30,7 +30,7 @@ const TermsOfService = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">2. Descrição do Serviço</h2>
             <p className="text-muted-foreground leading-relaxed">
-              A AgendaClin é uma plataforma de gestão de agendamentos para clínicas e consultórios médicos que oferece:
+              A MedFlow é uma plataforma de gestão de agendamentos para clínicas e consultórios médicos que oferece:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground mt-4">
               <li>Sistema de agendamento online de consultas</li>
@@ -90,7 +90,7 @@ const TermsOfService = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">7. Propriedade Intelectual</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Todo o conteúdo, design, código e funcionalidades da plataforma AgendaClin são de nossa 
+              Todo o conteúdo, design, código e funcionalidades da plataforma MedFlow são de nossa 
               propriedade ou licenciados para nós. Você não pode copiar, modificar, distribuir ou criar 
               obras derivadas sem nossa autorização expressa por escrito.
             </p>
@@ -99,7 +99,7 @@ const TermsOfService = () => {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">8. Limitação de Responsabilidade</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Na extensão máxima permitida por lei, a AgendaClin não será responsável por:
+              Na extensão máxima permitida por lei, a MedFlow não será responsável por:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground mt-4">
               <li>Danos indiretos, incidentais ou consequenciais</li>
@@ -149,8 +149,8 @@ const TermsOfService = () => {
               Para dúvidas sobre estes Termos de Serviço, entre em contato:
             </p>
             <p className="text-muted-foreground mt-4">
-              <strong>E-mail:</strong> suporte@agendaclin.com<br />
-              <strong>Empresa:</strong> AgendaClin LTDA
+              <strong>E-mail:</strong> suporte@medflow.app<br />
+              <strong>Empresa:</strong> MedFlow LTDA
             </p>
           </section>
         </div>

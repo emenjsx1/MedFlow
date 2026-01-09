@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL')?.replace(/\/$/, '')
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY')
-    const APP_URL = Deno.env.get('APP_URL') || 'https://pewviewagendaclin.lovable.app'
+    const APP_URL = Deno.env.get('APP_URL') || 'https://medflow.app'
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 

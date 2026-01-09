@@ -87,8 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!roleError && roleData) {
         setRole(roleData.role as UserRole);
       } else {
-        // Default to 'staff' if no role found
-        setRole('staff');
+        // Se não encontrar role, verificar se é super_admin via auth.users
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.is_super_admin) {
+            setRole('super_admin');
+          } else {
+            // Se não tem role e não é super_admin, deixar como null
+            // O usuário ainda pode fazer login, mas sem permissões especiais
+            setRole(null);
+          }
+        } catch (err) {
+          console.error('Error checking super_admin status:', err);
+          // Em caso de erro, deixar como null para não bloquear o login
+          setRole(null);
+        }
       }
 
       // Fetch tenant_id from profile
